@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ANSWER - AI Body Partner (v0.0.7)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+        :root {
+            --primary-bg: #fcfcfd;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: var(--primary-bg);
+            color: #1a1a1a;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .premium-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        .chat-bubble-ai {
+            background: #ffffff;
+            border: 1px solid #f0f0f0;
+            color: #333;
+            border-radius: 20px 20px 20px 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .chat-bubble-user {
+            background: #2d2d2d;
+            color: #ffffff;
+            border-radius: 20px 20px 4px 20px;
+        }
+
+        .report-gradient {
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .nav-active { color: #000; font-weight: 600; }
+        .nav-inactive { color: #9ca3af; }
+
+        #main-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .placeholder-cycle {
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* Loading animation */
+        .dot-typing {
+            position: relative;
+            left: -9999px;
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background-color: #9ca3af;
+            color: #9ca3af;
+            box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af;
+            animation: dot-typing 1.5s infinite linear;
+        }
+
+        @keyframes dot-typing {
+            0% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
+            16.667% { box-shadow: 9984px -6px 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
+            33.333% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
+            50% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px -6px 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
+            66.667% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
+            83.333% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px -6px 0 0 #9ca3af; }
+            100% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
+        }
+    </style>
+</head>
+<body class="bg-[#fcfcfd]">
+
+<div id="main-container">
+    <!-- Header -->
+    <header class="p-5 flex justify-between items-center bg-[#fcfcfd]/80 backdrop-blur-md sticky top-0 z-50">
+        <h1 class="text-xl font-bold tracking-tighter" onclick="app.goHome()" style="cursor: pointer;">ANSWER</h1>
+        <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <i class="fa-solid fa-user-doctor text-xs text-gray-400"></i>
+        </div>
+    </header>
+
+    <!-- Content Area -->
+    <main id="content" class="flex-1 overflow-y-auto hide-scrollbar pb-24">
+        <!-- Views will be injected here -->
+    </main>
+
+    <!-- Fixed Bottom Chat Input (Persistent) -->
+    <div id="input-container" class="fixed bottom-16 left-0 w-full p-4 bg-[#fcfcfd]/80 backdrop-blur-md z-40">
+        <div class="max-w-2xl mx-auto relative">
+            <input type="text" id="user-input" 
+                   class="w-full bg-white border border-gray-200 rounded-2xl py-4 pl-5 pr-14 focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-sm transition-all text-[16px]" 
+                   placeholder="무엇이든 물어보세요."
+                   onkeypress="if(event.key === 'Enter') app.handleSend()">
+            <button onclick="app.handleSend()" class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center hover:bg-gray-800 transition-colors">
+                <i class="fa-solid fa-arrow-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 flex justify-around items-center py-3 z-50">
+        <button onclick="app.goHome()" id="nav-home" class="flex flex-col items-center nav-active transition-colors">
+            <i class="fa-solid fa-comment-dots text-lg"></i>
+            <span class="text-[10px] mt-1 uppercase tracking-widest">Home</span>
+        </button>
+        <button onclick="app.goDashboard()" id="nav-dashboard" class="flex flex-col items-center nav-inactive transition-colors">
+            <i class="fa-solid fa-dna text-lg"></i>
+            <span class="text-[10px] mt-1 uppercase tracking-widest">My Body</span>
+        </button>
+    </nav>
+</div>
+
+<script>
+    const app = {
+        state: 'HOME', // HOME, DASHBOARD
+        consultationStep: 'INITIAL', // INITIAL, FOLLOWUP1, FOLLOWUP2, FINAL_REPORT
+        currentSession: [],
+        allSessions: JSON.parse(localStorage.getItem('answer_sessions') || '[]'),
+        placeholders: [
+            "요즘 너무 피곤해요",
+            "생리를 두 달째 안 했어요",
+            "밤에 잠이 잘 안 와요",
+            "밥을 먹으면 배에서 소리가 나요"
+        ],
+        placeholderIdx: 0,
+
+        init() {
+            this.render();
+            this.cyclePlaceholders();
+        },
+
+        cyclePlaceholders() {
+            const input = document.getElementById('user-input');
+            setInterval(() => {
+                if (this.currentSession.length === 0) {
+                    this.placeholderIdx = (this.placeholderIdx + 1) % this.placeholders.length;
+                    input.placeholder = this.placeholders[this.placeholderIdx];
+                }
+            }, 3000);
+        },
+
+        render() {
+            const content = document.getElementById('content');
+            const navHome = document.getElementById('nav-home');
+            const navDash = document.getElementById('nav-dashboard');
+
+            if (this.state === 'HOME') {
+                navHome.className = 'flex flex-col items-center nav-active';
+                navDash.className = 'flex flex-col items-center nav-inactive';
+                this.renderHome();
+            } else {
+                navHome.className = 'flex flex-col items-center nav-inactive';
+                navDash.className = 'flex flex-col items-center nav-active';
+                this.renderDashboard();
+            }
+        },
+
+        renderHome() {
+            const content = document.getElementById('content');
+            
+            if (this.currentSession.length === 0) {
+                // Initial State
+                content.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-[60vh] px-8 text-center fade-in">
+                        <div class="w-16 h-16 bg-black text-white rounded-3xl flex items-center justify-center mb-8 shadow-xl">
+                            <span class="text-2xl font-bold tracking-tighter">A</span>
+                        </div>
+                        <h2 class="text-3xl font-bold mb-3 tracking-tight">ANSWER</h2>
+                        <p class="text-gray-500 font-light leading-relaxed">내 몸의 역사를 기억하는<br>당신의 개인 AI 파트너입니다.</p>
+                    </div>
+                `;
+            } else {
+                // Chat State
+                content.innerHTML = `
+                    <div id="chat-list" class="p-5 space-y-6 max-w-2xl mx-auto">
+                        ${this.currentSession.map(msg => this.createChatBubble(msg)).join('')}
+                        <div id="loading-indicator" class="hidden">
+                            <div class="flex justify-start mb-4">
+                                <div class="chat-bubble-ai px-5 py-4 min-w-[60px] flex items-center justify-center">
+                                    <div class="dot-typing"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                setTimeout(() => content.scrollTop = content.scrollHeight, 100);
+            }
+        },
+
+        createChatBubble(msg) {
+            if (msg.role === 'user') {
+                return `
+                    <div class="flex justify-end fade-in">
+                        <div class="chat-bubble-user px-5 py-3 max-w-[85%] text-[15px] leading-relaxed">
+                            ${msg.content}
+                        </div>
+                    </div>
+                `;
+            } else if (msg.role === 'ai') {
+                return `
+                    <div class="flex justify-start fade-in">
+                        <div class="chat-bubble-ai px-5 py-4 max-w-[90%] text-[15px] leading-relaxed">
+                            ${msg.content}
+                        </div>
+                    </div>
+                `;
+            } else if (msg.role === 'report') {
+                return `
+                    <div class="fade-in space-y-4">
+                        <div class="premium-card p-6 report-gradient">
+                            <div class="flex items-center gap-2 mb-4">
+                                <span class="bg-black text-white text-[10px] px-2 py-1 rounded-md font-bold">FINAL REPORT</span>
+                                <span class="text-gray-400 text-xs">${new Date().toLocaleDateString()}</span>
+                            </div>
+                            <h3 class="text-lg font-bold mb-3">몸의 신호에 대한 분석 리포트</h3>
+                            <p class="text-gray-700 text-[14px] leading-relaxed mb-6">${msg.data.summary}</p>
+                            
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">관련 신체 시스템</h4>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${msg.data.systems.map(s => `<span class="px-3 py-1 bg-white border border-gray-100 rounded-full text-xs font-medium">${s}</span>`).join('')}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">관찰된 패턴</h4>
+                                    <ul class="space-y-2">
+                                        ${msg.data.patterns.map(p => `<li class="text-sm text-gray-600 flex items-start gap-2"><i class="fa-solid fa-circle-check text-black mt-1 text-[10px]"></i> ${p}</li>`).join('')}
+                                    </ul>
+                                </div>
+                                <div class="p-4 bg-white/50 rounded-xl border border-gray-100">
+                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">오늘의 한 가지 행동</h4>
+                                    <p class="text-sm font-medium text-black">${msg.data.action}</p>
+                                </div>
+                            </div>
+
+                            <hr class="my-6 border-gray-200">
+                            
+                            <div class="text-[11px] text-gray-400 font-serif italic">
+                                <p class="mb-1">References</p>
+                                ${msg.data.refs.map(r => `<p>${r}</p>`).join('')}
+                            </div>
+                        </div>
+                        <p class="text-center text-[10px] text-gray-300">본 분석은 의학적 진단이 아니며, 참고용으로만 사용해 주세요.</p>
+                    </div>
+                `;
+            }
+        },
+
+        renderDashboard() {
+            const content = document.getElementById('content');
+            const summaries = this.allSessions.filter(s => s.report).map(s => s.report.summary);
+            
+            content.innerHTML = `
+                <div class="p-5 max-w-2xl mx-auto space-y-6 fade-in">
+                    <section>
+                        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">My Body History</h2>
+                        <div class="premium-card p-6 bg-black text-white mb-6">
+                            <h3 class="text-sm font-medium opacity-60 mb-2">Recent Body Summary</h3>
+                            <p class="text-lg font-light leading-relaxed">
+                                ${summaries.length > 0 ? summaries[summaries.length - 1] : "아직 기록된 몸의 역사가 없습니다. 질문을 시작해 보세요."}
+                            </p>
+                        </div>
+                    </section>
+
+                    <section class="space-y-4">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">ANSWER Remembers</h3>
+                        ${this.allSessions.length === 0 ? 
+                            `<div class="premium-card p-8 text-center text-gray-400 text-sm">기록이 쌓이면 AI가 당신의 패턴을 연결합니다.</div>` : 
+                            this.allSessions.slice().reverse().map(session => `
+                                <div class="premium-card p-5 mb-4 border-l-4 border-black">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-[10px] font-bold text-gray-400">${session.date}</span>
+                                        <i class="fa-solid fa-chevron-right text-[10px] text-gray-300"></i>
+                                    </div>
+                                    <p class="text-sm font-medium text-gray-800 mb-1 line-clamp-1">Q: ${session.firstQuestion}</p>
+                                    <p class="text-[12px] text-gray-500 line-clamp-2">${session.report ? session.report.summary : '대화 진행 중...'}</p>
+                                </div>
+                            `).join('')
+                        }
+                    </section>
+
+                    <section>
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Areas I'm Watching</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="premium-card p-5">
+                                <i class="fa-solid fa-moon text-blue-300 mb-3"></i>
+                                <p class="text-xs font-bold text-gray-400 mb-1">수면 리듬</p>
+                                <p class="text-sm font-medium">관찰 중</p>
+                            </div>
+                            <div class="premium-card p-5">
+                                <i class="fa-solid fa-bolt text-yellow-300 mb-3"></i>
+                                <p class="text-xs font-bold text-gray-400 mb-1">에너지 대사</p>
+                                <p class="text-sm font-medium">안정적</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="pt-4">
+                        <div class="premium-card p-6 border-dashed border-2 border-gray-100 bg-gray-50/50 flex flex-col items-center text-center">
+                            <i class="fa-solid fa-cloud-arrow-up text-gray-300 text-2xl mb-3"></i>
+                            <h3 class="text-sm font-bold mb-1">건강 기록 업로드</h3>
+                            <p class="text-xs text-gray-400 mb-4">검진 결과 사진을 올리면<br>더 개인화된 기억이 가능합니다.</p>
+                            <input type="file" id="health-file" class="hidden" onchange="alert('파일이 안전하게 기록되었습니다. (Phase 2에서 분석 예정)')">
+                            <button onclick="document.getElementById('health-file').click()" class="btn btn-sm btn-ghost border-gray-200 bg-white rounded-full px-6">파일 선택</button>
+                        </div>
+                    </section>
+                </div>
+            `;
+        },
+
+        async handleSend() {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            
+            // Switch to chat view if in dashboard
+            if (this.state === 'DASHBOARD') {
+                this.state = 'HOME';
+                this.render();
+            }
+
+            // Add user message
+            this.currentSession.push({ role: 'user', content: text });
+            this.render();
+
+            // Process with AI
+            await this.generateAIResponse(text);
+        },
+
+        async generateAIResponse(userText) {
+            const loading = document.getElementById('loading-indicator');
+            if (loading) loading.classList.remove('hidden');
+            
+            const content = document.getElementById('content');
+            content.scrollTop = content.scrollHeight;
+
+            // Fake delay for AI thinking
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            let aiMsg = "";
+            
+            if (this.consultationStep === 'INITIAL') {
+                aiMsg = `지금 질문 주신 내용에서 단서들이 보입니다. 더 정확한 배경을 파악하기 위해 한두 가지만 더 여쭤볼게요. <b>이러한 현상이 보통 하루 중 어느 시간대에 가장 뚜렷하게 느껴지시나요?</b>`;
+                this.consultationStep = 'FOLLOWUP1';
+            } else if (this.consultationStep === 'FOLLOWUP1') {
+                aiMsg = `그렇군요. 시간대의 특징이 있네요. 마지막으로, <b>이 증상이 나타날 때 함께 느껴지는 다른 신체적 변화(예: 갈증, 체온 변화, 특정 부위의 긴장 등)가 있으신가요?</b>`;
+                this.consultationStep = 'FOLLOWUP2';
+            } else if (this.consultationStep === 'FOLLOWUP2') {
+                // Generate Final Report
+                const report = this.createFinalReportData();
+                this.currentSession.push({ role: 'report', data: report });
+                this.saveSession(report);
+                this.consultationStep = 'FINAL_REPORT';
+                if (loading) loading.classList.add('hidden');
+                this.render();
+                return;
+            } else {
+                aiMsg = `말씀하신 내용을 바탕으로 저의 기억을 업데이트했습니다. 추가로 궁금한 점이 있다면 언제든 말씀해 주세요.`;
+            }
+
+            if (loading) loading.classList.add('hidden');
+            this.currentSession.push({ role: 'ai', content: aiMsg });
+            this.render();
+        },
+
+        createFinalReportData() {
+            const firstQ = this.currentSession[0].content;
+            
+            // Basic logic for mock report based on keywords
+            let systems = ["자율신경계", "에너지 대사"];
+            let summary = `입력하신 '${firstQ}' 증상과 이후 대화를 종합해 볼 때, 현재 몸은 에너지 대사 효율이 일시적으로 저하되었거나 서카디안 리듬(생체 리듬)이 불균형해진 상태로 보입니다.`;
+            let action = "오늘 저녁은 평소보다 30분 일찍 소등하고 따뜻한 물로 가벼운 샤워를 해보세요.";
+            
+            if (firstQ.includes("잠") || firstQ.includes("피곤")) {
+                systems = ["서카디안 리듬", "부신 호르몬 시스템"];
+                summary = "지속적인 피로와 수면 관련 신호는 몸이 현재 '대처 모드'에 머물러 있음을 시사합니다. 이는 단순 휴식 부족보다 호르몬 리듬의 회복이 필요한 단계입니다.";
+                action = "내일 아침 기상 직후 10분간 자연광을 쬐어 멜라토닌 리듬을 초기화해 보세요.";
+            } else if (firstQ.includes("배") || firstQ.includes("소화") || firstQ.includes("밥")) {
+                systems = ["소화기계", "장내 마이크로바이옴"];
+                summary = "식사 후 발생하는 신호들은 장운동의 리듬과 장내 미생물 환경의 일시적 불균형을 나타낼 수 있습니다. 장-뇌 축(Gut-Brain Axis)의 긴장도를 낮추는 것이 핵심입니다.";
+                action = "식사 중 물 섭취를 최소화하고, 한 입당 30번 이상 천천히 씹는 연습을 오늘 바로 시작해 보세요.";
+            }
+
+            return {
+                summary: summary,
+                systems: systems,
+                patterns: [
+                    "특정 시간대 에너지 가용성 저하 패턴",
+                    "외부 스트레스에 대한 신체 방어 기제 활성화",
+                    "회복을 위한 서카디안 리듬의 재설정 필요"
+                ],
+                action: action,
+                refs: [
+                    "[1] Guyton & Hall. Textbook of Medical Physiology.",
+                    "[2] Sapolsky RM. Why Zebras Don’t Get Ulcers.",
+                    "[3] Walker M. Why We Sleep."
+                ]
+            };
+        },
+
+        saveSession(report) {
+            const sessionData = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                firstQuestion: this.currentSession[0].content,
+                messages: this.currentSession,
+                report: report
+            };
+            this.allSessions.push(sessionData);
+            localStorage.setItem('answer_sessions', JSON.stringify(this.allSessions));
+        },
+
+        goHome() {
+            this.state = 'HOME';
+            this.render();
+        },
+
+        goDashboard() {
+            this.state = 'DASHBOARD';
+            this.render();
+        }
+    };
+
+    // Initialize the app
+    app.init();
+</script>
+</body>
+</html>
