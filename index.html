@@ -3,455 +3,495 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ANSWER - AI Body Partner (v0.0.7)</title>
+    <title>ANSWER - Phase 1 Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-
-        :root {
-            --primary-bg: #fcfcfd;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-        }
-
         body {
-            font-family: 'Inter', 'Noto Sans KR', sans-serif;
-            background-color: var(--primary-bg);
-            color: #1a1a1a;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
             -webkit-tap-highlight-color: transparent;
         }
-
-        .premium-card {
-            background: white;
-            border-radius: 24px;
-            box-shadow: var(--card-shadow);
-            border: 1px solid rgba(0, 0, 0, 0.02);
-            transition: all 0.3s ease;
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
-
-        .chat-bubble-ai {
-            background: #ffffff;
-            border: 1px solid #f0f0f0;
-            color: #333;
-            border-radius: 20px 20px 20px 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        .premium-shadow {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 10px -2px rgba(0, 0, 0, 0.03);
         }
-
-        .chat-bubble-user {
-            background: #2d2d2d;
-            color: #ffffff;
-            border-radius: 20px 20px 4px 20px;
-        }
-
-        .report-gradient {
-            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-        }
-
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        .nav-active { color: #000; font-weight: 600; }
-        .nav-inactive { color: #9ca3af; }
-
-        #main-container {
-            height: 100vh;
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+            40% { color: #6366f1; text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+            60% { color: #6366f1; text-shadow: .25em 0 0 #6366f1, .5em 0 0 rgba(0,0,0,0); }
+            80%, 100% { color: #6366f1; text-shadow: .25em 0 0 #6366f1, .5em 0 0 #6366f1; }
+        }
+        /* Mobile Centering */
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-        }
-
-        .placeholder-cycle {
-            transition: opacity 0.5s ease-in-out;
-        }
-
-        /* Loading animation */
-        .dot-typing {
             position: relative;
-            left: -9999px;
-            width: 6px;
-            height: 6px;
-            border-radius: 3px;
-            background-color: #9ca3af;
-            color: #9ca3af;
-            box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af;
-            animation: dot-typing 1.5s infinite linear;
-        }
-
-        @keyframes dot-typing {
-            0% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
-            16.667% { box-shadow: 9984px -6px 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
-            33.333% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
-            50% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px -6px 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
-            66.667% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
-            83.333% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px -6px 0 0 #9ca3af; }
-            100% { box-shadow: 9984px 0 0 0 #9ca3af, 9999px 0 0 0 #9ca3af, 10014px 0 0 0 #9ca3af; }
         }
     </style>
 </head>
-<body class="bg-[#fcfcfd]">
+<body>
 
-<div id="main-container">
-    <!-- Header -->
-    <header class="p-5 flex justify-between items-center bg-[#fcfcfd]/80 backdrop-blur-md sticky top-0 z-50">
-        <h1 class="text-xl font-bold tracking-tighter" onclick="app.goHome()" style="cursor: pointer;">ANSWER</h1>
-        <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <i class="fa-solid fa-user-doctor text-xs text-gray-400"></i>
-        </div>
-    </header>
+    <div class="app-container bg-white shadow-xl">
+        
+        <!-- Main Content Area -->
+        <main id="app-content" class="flex-1 pb-24 overflow-y-auto no-scrollbar">
+            <!-- Content will be injected here -->
+        </main>
 
-    <!-- Content Area -->
-    <main id="content" class="flex-1 overflow-y-auto hide-scrollbar pb-24">
-        <!-- Views will be injected here -->
-    </main>
-
-    <!-- Fixed Bottom Chat Input (Persistent) -->
-    <div id="input-container" class="fixed bottom-16 left-0 w-full p-4 bg-[#fcfcfd]/80 backdrop-blur-md z-40">
-        <div class="max-w-2xl mx-auto relative">
-            <input type="text" id="user-input" 
-                   class="w-full bg-white border border-gray-200 rounded-2xl py-4 pl-5 pr-14 focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-sm transition-all text-[16px]" 
-                   placeholder="무엇이든 물어보세요."
-                   onkeypress="if(event.key === 'Enter') app.handleSend()">
-            <button onclick="app.handleSend()" class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center hover:bg-gray-800 transition-colors">
-                <i class="fa-solid fa-arrow-up"></i>
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 w-full max-w-[480px] bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 py-3 flex justify-around items-center z-50">
+            <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center gap-1 text-indigo-600 transition-all">
+                <i data-lucide="message-square" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">HOME</span>
             </button>
-        </div>
+            <button onclick="switchTab('body')" id="nav-body" class="flex flex-col items-center gap-1 text-slate-400 transition-all">
+                <i data-lucide="brain-circuit" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">MY BODY</span>
+            </button>
+        </nav>
     </div>
 
-    <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 flex justify-around items-center py-3 z-50">
-        <button onclick="app.goHome()" id="nav-home" class="flex flex-col items-center nav-active transition-colors">
-            <i class="fa-solid fa-comment-dots text-lg"></i>
-            <span class="text-[10px] mt-1 uppercase tracking-widest">Home</span>
-        </button>
-        <button onclick="app.goDashboard()" id="nav-dashboard" class="flex flex-col items-center nav-inactive transition-colors">
-            <i class="fa-solid fa-dna text-lg"></i>
-            <span class="text-[10px] mt-1 uppercase tracking-widest">My Body</span>
-        </button>
-    </nav>
-</div>
+    <!-- Modal Template -->
+    <dialog id="report_modal" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box p-0 bg-slate-50 overflow-hidden">
+            <div id="modal-content" class="p-6 pb-20"></div>
+            <div class="modal-action absolute top-2 right-4">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </form>
+            </div>
+        </div>
+    </dialog>
 
-<script>
-    const app = {
-        state: 'HOME', // HOME, DASHBOARD
-        consultationStep: 'INITIAL', // INITIAL, FOLLOWUP1, FOLLOWUP2, FINAL_REPORT
-        currentSession: [],
-        allSessions: JSON.parse(localStorage.getItem('answer_sessions') || '[]'),
-        placeholders: [
-            "요즘 너무 피곤해요",
-            "생리를 두 달째 안 했어요",
-            "밤에 잠이 잘 안 와요",
-            "밥을 먹으면 배에서 소리가 나요"
-        ],
-        placeholderIdx: 0,
+    <script>
+        // --- State Management ---
+        let currentTab = 'home';
+        let history = JSON.parse(localStorage.getItem('answer_history_v1')) || [];
+        let currentSession = null; // { id, questions: [], responses: [], step: 0 }
+        let isTyping = false;
 
-        init() {
-            this.render();
-            this.cyclePlaceholders();
-        },
+        const placeholders = [
+            "요즘 밤에 잠이 잘 안 와요",
+            "식사 후에 항상 속이 더부룩해요",
+            "두 달째 생리를 안 하고 있어요",
+            "갑자기 가슴이 두근거릴 때가 있어요"
+        ];
+        let placeholderIdx = 0;
 
-        cyclePlaceholders() {
-            const input = document.getElementById('user-input');
+        // --- Core Logic ---
+
+        function init() {
+            renderContent();
+            updateNav();
+            lucide.createIcons();
+            startPlaceholderRotation();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            renderContent();
+            updateNav();
+            lucide.createIcons();
+        }
+
+        function updateNav() {
+            const homeBtn = document.getElementById('nav-home');
+            const bodyBtn = document.getElementById('nav-body');
+            
+            if (currentTab === 'home') {
+                homeBtn.classList.replace('text-slate-400', 'text-indigo-600');
+                bodyBtn.classList.replace('text-indigo-600', 'text-slate-400');
+            } else {
+                bodyBtn.classList.replace('text-slate-400', 'text-indigo-600');
+                homeBtn.classList.replace('text-indigo-600', 'text-slate-400');
+            }
+        }
+
+        function startPlaceholderRotation() {
+            const input = document.getElementById('main-input');
+            if (!input) return;
             setInterval(() => {
-                if (this.currentSession.length === 0) {
-                    this.placeholderIdx = (this.placeholderIdx + 1) % this.placeholders.length;
-                    input.placeholder = this.placeholders[this.placeholderIdx];
+                if (currentTab === 'home' && !currentSession) {
+                    placeholderIdx = (placeholderIdx + 1) % placeholders.length;
+                    const el = document.getElementById('main-input');
+                    if (el) el.placeholder = placeholders[placeholderIdx];
                 }
             }, 3000);
-        },
+        }
 
-        render() {
-            const content = document.getElementById('content');
-            const navHome = document.getElementById('nav-home');
-            const navDash = document.getElementById('nav-dashboard');
+        // --- Rendering ---
 
-            if (this.state === 'HOME') {
-                navHome.className = 'flex flex-col items-center nav-active';
-                navDash.className = 'flex flex-col items-center nav-inactive';
-                this.renderHome();
+        function renderContent() {
+            const container = document.getElementById('app-content');
+            if (currentTab === 'home') {
+                renderHome(container);
             } else {
-                navHome.className = 'flex flex-col items-center nav-inactive';
-                navDash.className = 'flex flex-col items-center nav-active';
-                this.renderDashboard();
+                renderBody(container);
             }
-        },
+            container.scrollTop = container.scrollHeight;
+        }
 
-        renderHome() {
-            const content = document.getElementById('content');
-            
-            if (this.currentSession.length === 0) {
-                // Initial State
-                content.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-[60vh] px-8 text-center fade-in">
-                        <div class="w-16 h-16 bg-black text-white rounded-3xl flex items-center justify-center mb-8 shadow-xl">
-                            <span class="text-2xl font-bold tracking-tighter">A</span>
+        function renderHome(container) {
+            if (!currentSession) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center min-h-[80vh] px-8 fade-in">
+                        <h1 class="text-3xl font-light tracking-widest text-slate-800 mb-2">ANSWER</h1>
+                        <p class="text-slate-400 text-sm mb-12">당신의 몸을 기억하는 파트너</p>
+                        
+                        <div class="w-full relative">
+                            <input type="text" id="main-input" 
+                                class="w-full bg-white border border-slate-200 rounded-2xl px-6 py-5 pr-14 premium-shadow outline-none focus:border-indigo-300 transition-all text-slate-700"
+                                placeholder="${placeholders[0]}"
+                                onkeypress="handleKeyPress(event)">
+                            <button onclick="handleSend()" class="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 hover:text-indigo-700 transition-colors">
+                                <i data-lucide="arrow-up-circle" class="w-8 h-8"></i>
+                            </button>
                         </div>
-                        <h2 class="text-3xl font-bold mb-3 tracking-tight">ANSWER</h2>
-                        <p class="text-gray-500 font-light leading-relaxed">내 몸의 역사를 기억하는<br>당신의 개인 AI 파트너입니다.</p>
                     </div>
                 `;
             } else {
-                // Chat State
-                content.innerHTML = `
-                    <div id="chat-list" class="p-5 space-y-6 max-w-2xl mx-auto">
-                        ${this.currentSession.map(msg => this.createChatBubble(msg)).join('')}
-                        <div id="loading-indicator" class="hidden">
-                            <div class="flex justify-start mb-4">
-                                <div class="chat-bubble-ai px-5 py-4 min-w-[60px] flex items-center justify-center">
-                                    <div class="dot-typing"></div>
+                container.innerHTML = `
+                    <div class="px-6 pt-12 pb-10 flex flex-col gap-6" id="chat-flow">
+                        ${currentSession.questions.map((q, i) => `
+                            <div class="flex justify-end fade-in">
+                                <div class="bg-indigo-600 text-white px-5 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md">
+                                    ${q}
                                 </div>
                             </div>
-                        </div>
+                            <div class="flex justify-start fade-in">
+                                <div class="glass-card text-slate-700 px-5 py-3 rounded-2xl rounded-tl-none max-w-[85%] text-sm premium-shadow">
+                                    ${currentSession.responses[i] || '<span class="loading-dots">분석 중</span>'}
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
-                `;
-                setTimeout(() => content.scrollTop = content.scrollHeight, 100);
-            }
-        },
-
-        createChatBubble(msg) {
-            if (msg.role === 'user') {
-                return `
-                    <div class="flex justify-end fade-in">
-                        <div class="chat-bubble-user px-5 py-3 max-w-[85%] text-[15px] leading-relaxed">
-                            ${msg.content}
+                    <!-- Fixed Footer Input for Chat -->
+                    <div class="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-6">
+                        <div class="relative">
+                            <input type="text" id="chat-input" 
+                                class="w-full bg-white border border-slate-100 rounded-full px-6 py-4 pr-14 shadow-lg outline-none focus:border-indigo-200 text-sm"
+                                placeholder="답변을 입력하세요..."
+                                onkeypress="handleKeyPress(event)">
+                            <button onclick="handleSend()" class="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500">
+                                <i data-lucide="send" class="w-6 h-6"></i>
+                            </button>
                         </div>
-                    </div>
-                `;
-            } else if (msg.role === 'ai') {
-                return `
-                    <div class="flex justify-start fade-in">
-                        <div class="chat-bubble-ai px-5 py-4 max-w-[90%] text-[15px] leading-relaxed">
-                            ${msg.content}
-                        </div>
-                    </div>
-                `;
-            } else if (msg.role === 'report') {
-                return `
-                    <div class="fade-in space-y-4">
-                        <div class="premium-card p-6 report-gradient">
-                            <div class="flex items-center gap-2 mb-4">
-                                <span class="bg-black text-white text-[10px] px-2 py-1 rounded-md font-bold">FINAL REPORT</span>
-                                <span class="text-gray-400 text-xs">${new Date().toLocaleDateString()}</span>
-                            </div>
-                            <h3 class="text-lg font-bold mb-3">몸의 신호에 대한 분석 리포트</h3>
-                            <p class="text-gray-700 text-[14px] leading-relaxed mb-6">${msg.data.summary}</p>
-                            
-                            <div class="space-y-6">
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">관련 신체 시스템</h4>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${msg.data.systems.map(s => `<span class="px-3 py-1 bg-white border border-gray-100 rounded-full text-xs font-medium">${s}</span>`).join('')}
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">관찰된 패턴</h4>
-                                    <ul class="space-y-2">
-                                        ${msg.data.patterns.map(p => `<li class="text-sm text-gray-600 flex items-start gap-2"><i class="fa-solid fa-circle-check text-black mt-1 text-[10px]"></i> ${p}</li>`).join('')}
-                                    </ul>
-                                </div>
-                                <div class="p-4 bg-white/50 rounded-xl border border-gray-100">
-                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">오늘의 한 가지 행동</h4>
-                                    <p class="text-sm font-medium text-black">${msg.data.action}</p>
-                                </div>
-                            </div>
-
-                            <hr class="my-6 border-gray-200">
-                            
-                            <div class="text-[11px] text-gray-400 font-serif italic">
-                                <p class="mb-1">References</p>
-                                ${msg.data.refs.map(r => `<p>${r}</p>`).join('')}
-                            </div>
-                        </div>
-                        <p class="text-center text-[10px] text-gray-300">본 분석은 의학적 진단이 아니며, 참고용으로만 사용해 주세요.</p>
                     </div>
                 `;
             }
-        },
+        }
 
-        renderDashboard() {
-            const content = document.getElementById('content');
-            const summaries = this.allSessions.filter(s => s.report).map(s => s.report.summary);
+        function renderBody(container) {
+            const summary = history.length > 0 ? history[0].finalReport.summary : "아직 기록된 역사가 없습니다. 첫 질문을 시작해보세요.";
             
-            content.innerHTML = `
-                <div class="p-5 max-w-2xl mx-auto space-y-6 fade-in">
-                    <section>
-                        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">My Body History</h2>
-                        <div class="premium-card p-6 bg-black text-white mb-6">
-                            <h3 class="text-sm font-medium opacity-60 mb-2">Recent Body Summary</h3>
-                            <p class="text-lg font-light leading-relaxed">
-                                ${summaries.length > 0 ? summaries[summaries.length - 1] : "아직 기록된 몸의 역사가 없습니다. 질문을 시작해 보세요."}
-                            </p>
+            // Areas I'm Watching Logic
+            const areaStatus = calculateAreaStatus();
+
+            container.innerHTML = `
+                <div class="px-6 pt-10 fade-in">
+                    <header class="mb-8">
+                        <h2 class="text-2xl font-semibold text-slate-800">My Body History</h2>
+                        <p class="text-slate-400 text-xs mt-1">기억은 쌓일수록 더 정교해집니다.</p>
+                    </header>
+
+                    <!-- Recent Summary -->
+                    <section class="mb-8">
+                        <div class="glass-card p-6 rounded-3xl premium-shadow border-l-4 border-indigo-500">
+                            <h3 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-tighter">Recent Body Summary</h3>
+                            <p class="text-slate-700 text-sm leading-relaxed">${summary}</p>
+                            ${history.length > 0 ? `<button onclick="viewDetail('${history[0].id}')" class="mt-4 text-xs font-semibold text-indigo-500 flex items-center gap-1">전체 리포트 보기 <i data-lucide="chevron-right" class="w-3 h-3"></i></button>` : ''}
                         </div>
                     </section>
 
-                    <section class="space-y-4">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">ANSWER Remembers</h3>
-                        ${this.allSessions.length === 0 ? 
-                            `<div class="premium-card p-8 text-center text-gray-400 text-sm">기록이 쌓이면 AI가 당신의 패턴을 연결합니다.</div>` : 
-                            this.allSessions.slice().reverse().map(session => `
-                                <div class="premium-card p-5 mb-4 border-l-4 border-black">
-                                    <div class="flex justify-between items-center mb-3">
-                                        <span class="text-[10px] font-bold text-gray-400">${session.date}</span>
-                                        <i class="fa-solid fa-chevron-right text-[10px] text-gray-300"></i>
+                    <!-- Areas I'm Watching -->
+                    <section class="mb-8">
+                        <h3 class="text-sm font-semibold text-slate-800 mb-4">Areas I'm Watching</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${areaStatus.map(area => `
+                                <div class="bg-white p-4 rounded-2xl border border-slate-50 shadow-sm">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="text-xs font-medium text-slate-500">${area.name}</span>
+                                        <div class="w-2 h-2 rounded-full ${area.color}"></div>
                                     </div>
-                                    <p class="text-sm font-medium text-gray-800 mb-1 line-clamp-1">Q: ${session.firstQuestion}</p>
-                                    <p class="text-[12px] text-gray-500 line-clamp-2">${session.report ? session.report.summary : '대화 진행 중...'}</p>
+                                    <span class="text-sm font-bold text-slate-800">${area.status}</span>
                                 </div>
-                            `).join('')
-                        }
-                    </section>
-
-                    <section>
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Areas I'm Watching</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="premium-card p-5">
-                                <i class="fa-solid fa-moon text-blue-300 mb-3"></i>
-                                <p class="text-xs font-bold text-gray-400 mb-1">수면 리듬</p>
-                                <p class="text-sm font-medium">관찰 중</p>
-                            </div>
-                            <div class="premium-card p-5">
-                                <i class="fa-solid fa-bolt text-yellow-300 mb-3"></i>
-                                <p class="text-xs font-bold text-gray-400 mb-1">에너지 대사</p>
-                                <p class="text-sm font-medium">안정적</p>
-                            </div>
+                            `).join('')}
                         </div>
                     </section>
 
-                    <section class="pt-4">
-                        <div class="premium-card p-6 border-dashed border-2 border-gray-100 bg-gray-50/50 flex flex-col items-center text-center">
-                            <i class="fa-solid fa-cloud-arrow-up text-gray-300 text-2xl mb-3"></i>
-                            <h3 class="text-sm font-bold mb-1">건강 기록 업로드</h3>
-                            <p class="text-xs text-gray-400 mb-4">검진 결과 사진을 올리면<br>더 개인화된 기억이 가능합니다.</p>
-                            <input type="file" id="health-file" class="hidden" onchange="alert('파일이 안전하게 기록되었습니다. (Phase 2에서 분석 예정)')">
-                            <button onclick="document.getElementById('health-file').click()" class="btn btn-sm btn-ghost border-gray-200 bg-white rounded-full px-6">파일 선택</button>
+                    <!-- History Search & List -->
+                    <section class="mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-semibold text-slate-800 uppercase tracking-widest">ANSWER Remembers</h3>
+                            <span class="text-[10px] text-slate-400">${history.length} Memories</span>
+                        </div>
+                        <div class="relative mb-4">
+                            <input type="text" id="history-search" oninput="filterHistory()" placeholder="기억 검색..." class="w-full bg-slate-100 border-none rounded-xl px-4 py-2 text-xs focus:ring-1 focus:ring-indigo-200">
+                            <i data-lucide="search" class="absolute right-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                        </div>
+                        <div id="history-list" class="flex flex-col gap-3">
+                            ${renderHistoryItems(history)}
                         </div>
                     </section>
+
+                    <!-- Record Upload -->
+                    <section class="mb-10 p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-center">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                        <h4 class="text-sm font-semibold text-slate-600">건강 기록 업로드</h4>
+                        <p class="text-[11px] text-slate-400 mt-1 mb-4">검진 결과 사진이나 PDF를 올려주시면<br>기억의 깊이가 더 깊어집니다. (선택사항)</p>
+                        <button class="btn btn-sm btn-outline border-slate-300 text-slate-500 hover:bg-slate-200 hover:border-slate-200 rounded-full px-6">파일 선택</button>
+                    </section>
+
+                    <p class="text-center text-[10px] text-slate-300 mb-10">ANSWER v0.0.8 | Memory gets more accurate over time.</p>
                 </div>
             `;
-        },
+            lucide.createIcons();
+        }
 
-        async handleSend() {
-            const input = document.getElementById('user-input');
+        function renderHistoryItems(items) {
+            if (items.length === 0) return `<p class="text-center py-10 text-slate-300 text-xs">기록된 질문이 없습니다.</p>`;
+            return items.map(item => `
+                <div onclick="viewDetail('${item.id}')" class="bg-white p-4 rounded-2xl border border-slate-50 shadow-sm flex justify-between items-center active:scale-[0.98] transition-transform">
+                    <div class="flex-1">
+                        <div class="flex gap-1 mb-1">
+                            ${item.finalReport.relatedSystems.map(tag => `<span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${tag}</span>`).join('')}
+                        </div>
+                        <p class="text-sm text-slate-700 font-medium truncate pr-4">${item.userQuestion}</p>
+                        <span class="text-[10px] text-slate-400">${new Date(item.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                </div>
+            `).join('');
+        }
+
+        // --- Interaction Handlers ---
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') handleSend();
+        }
+
+        async function handleSend() {
+            const inputId = currentSession ? 'chat-input' : 'main-input';
+            const input = document.getElementById(inputId);
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || isTyping) return;
 
-            input.value = '';
-            
-            // Switch to chat view if in dashboard
-            if (this.state === 'DASHBOARD') {
-                this.state = 'HOME';
-                this.render();
-            }
-
-            // Add user message
-            this.currentSession.push({ role: 'user', content: text });
-            this.render();
-
-            // Process with AI
-            await this.generateAIResponse(text);
-        },
-
-        async generateAIResponse(userText) {
-            const loading = document.getElementById('loading-indicator');
-            if (loading) loading.classList.remove('hidden');
-            
-            const content = document.getElementById('content');
-            content.scrollTop = content.scrollHeight;
-
-            // Fake delay for AI thinking
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            let aiMsg = "";
-            
-            if (this.consultationStep === 'INITIAL') {
-                aiMsg = `지금 질문 주신 내용에서 단서들이 보입니다. 더 정확한 배경을 파악하기 위해 한두 가지만 더 여쭤볼게요. <b>이러한 현상이 보통 하루 중 어느 시간대에 가장 뚜렷하게 느껴지시나요?</b>`;
-                this.consultationStep = 'FOLLOWUP1';
-            } else if (this.consultationStep === 'FOLLOWUP1') {
-                aiMsg = `그렇군요. 시간대의 특징이 있네요. 마지막으로, <b>이 증상이 나타날 때 함께 느껴지는 다른 신체적 변화(예: 갈증, 체온 변화, 특정 부위의 긴장 등)가 있으신가요?</b>`;
-                this.consultationStep = 'FOLLOWUP2';
-            } else if (this.consultationStep === 'FOLLOWUP2') {
-                // Generate Final Report
-                const report = this.createFinalReportData();
-                this.currentSession.push({ role: 'report', data: report });
-                this.saveSession(report);
-                this.consultationStep = 'FINAL_REPORT';
-                if (loading) loading.classList.add('hidden');
-                this.render();
-                return;
+            if (!currentSession) {
+                currentSession = { id: Date.now().toString(), questions: [text], responses: [], step: 0 };
             } else {
-                aiMsg = `말씀하신 내용을 바탕으로 저의 기억을 업데이트했습니다. 추가로 궁금한 점이 있다면 언제든 말씀해 주세요.`;
+                currentSession.questions.push(text);
+                currentSession.step++;
             }
-
-            if (loading) loading.classList.add('hidden');
-            this.currentSession.push({ role: 'ai', content: aiMsg });
-            this.render();
-        },
-
-        createFinalReportData() {
-            const firstQ = this.currentSession[0].content;
             
-            // Basic logic for mock report based on keywords
-            let systems = ["자율신경계", "에너지 대사"];
-            let summary = `입력하신 '${firstQ}' 증상과 이후 대화를 종합해 볼 때, 현재 몸은 에너지 대사 효율이 일시적으로 저하되었거나 서카디안 리듬(생체 리듬)이 불균형해진 상태로 보입니다.`;
-            let action = "오늘 저녁은 평소보다 30분 일찍 소등하고 따뜻한 물로 가벼운 샤워를 해보세요.";
+            input.value = '';
+            renderContent();
             
-            if (firstQ.includes("잠") || firstQ.includes("피곤")) {
-                systems = ["서카디안 리듬", "부신 호르몬 시스템"];
-                summary = "지속적인 피로와 수면 관련 신호는 몸이 현재 '대처 모드'에 머물러 있음을 시사합니다. 이는 단순 휴식 부족보다 호르몬 리듬의 회복이 필요한 단계입니다.";
-                action = "내일 아침 기상 직후 10분간 자연광을 쬐어 멜라토닌 리듬을 초기화해 보세요.";
-            } else if (firstQ.includes("배") || firstQ.includes("소화") || firstQ.includes("밥")) {
-                systems = ["소화기계", "장내 마이크로바이옴"];
-                summary = "식사 후 발생하는 신호들은 장운동의 리듬과 장내 미생물 환경의 일시적 불균형을 나타낼 수 있습니다. 장-뇌 축(Gut-Brain Axis)의 긴장도를 낮추는 것이 핵심입니다.";
-                action = "식사 중 물 섭취를 최소화하고, 한 입당 30번 이상 천천히 씹는 연습을 오늘 바로 시작해 보세요.";
+            isTyping = true;
+            await simulateAIResponse();
+            isTyping = false;
+            
+            renderContent();
+            lucide.createIcons();
+        }
+
+        async function simulateAIResponse() {
+            // Simulated /api/chat logic
+            await new Promise(r => setTimeout(r, 1500));
+            
+            let response = "";
+            const step = currentSession.step;
+            const initialQ = currentSession.questions[0];
+
+            if (step === 0) {
+                response = `단서가 보입니다. ${initialQ.includes('잠') ? '수면의 질을 더 파악하고 싶어요. 자고 일어났을 때 개운한 편인가요, 아니면 머리가 무거운가요?' : '이 증상이 나타날 때 다른 동반되는 감각(예: 소화불량, 두통 등)이 있나요?'}`;
+            } else if (step === 1) {
+                response = `알려주셔서 감사합니다. 혹시 이 증상이 최근 스트레스를 많이 받거나 식습관이 바뀌었을 때 더 심해지는 경향이 있나요?`;
+            } else {
+                // Final Report Generation
+                const finalReport = generateFinalReport(currentSession);
+                currentSession.finalReport = finalReport;
+                saveToHistory(currentSession);
+                response = renderFinalReportCard(finalReport);
             }
+            
+            currentSession.responses.push(response);
+        }
 
+        function generateFinalReport(session) {
+            const q = session.questions[0];
             return {
-                summary: summary,
-                systems: systems,
-                patterns: [
-                    "특정 시간대 에너지 가용성 저하 패턴",
-                    "외부 스트레스에 대한 신체 방어 기제 활성화",
-                    "회복을 위한 서카디안 리듬의 재설정 필요"
+                title: "종합 신체 흐름 분석",
+                summary: `지금 질문만으로도 몸의 신호가 보입니다. ${q}와 관련된 불편함은 단순한 일시적 증상이 아니라, 현재 몸의 에너지가 '회복 모드'보다는 '대처 모드'에 집중되어 있음을 시사합니다.`,
+                relatedSystems: q.includes('잠') ? ["수면 리듬", "신경계"] : ["소화계", "에너지 대사"],
+                observedPatterns: [
+                    "야간 회복 호르몬의 불균형 가능성",
+                    "신경계 긴장도가 높은 상태 유지",
+                    "특정 시간대 에너지 저하 패턴"
                 ],
-                action: action,
-                refs: [
-                    "[1] Guyton & Hall. Textbook of Medical Physiology.",
-                    "[2] Sapolsky RM. Why Zebras Don’t Get Ulcers.",
-                    "[3] Walker M. Why We Sleep."
+                oneActionToday: q.includes('잠') ? "오늘 밤 10시 이후 스마트폰 사용을 중단하고 10분간 명상을 해보세요." : "다음 식사 시 평소보다 2배 더 천천히 씹어보세요.",
+                safetyNote: "이 분석은 의학적 진단이 아닙니다. 심한 통증이나 고열이 동반된다면 즉시 전문의와 상담하십시오.",
+                references: [
+                    { type: "textbook", citation: "Guyton & Hall. Textbook of Medical Physiology." },
+                    { type: "paper", citation: "Walker M. Why We Sleep: Unlocking the Power of Sleep and Dreams." }
                 ]
             };
-        },
-
-        saveSession(report) {
-            const sessionData = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                firstQuestion: this.currentSession[0].content,
-                messages: this.currentSession,
-                report: report
-            };
-            this.allSessions.push(sessionData);
-            localStorage.setItem('answer_sessions', JSON.stringify(this.allSessions));
-        },
-
-        goHome() {
-            this.state = 'HOME';
-            this.render();
-        },
-
-        goDashboard() {
-            this.state = 'DASHBOARD';
-            this.render();
         }
-    };
 
-    // Initialize the app
-    app.init();
-</script>
+        function renderFinalReportCard(report) {
+            return `
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-2 text-indigo-600">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        <span class="font-bold text-base">FINAL REPORT</span>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 premium-shadow border border-indigo-50">
+                        <h4 class="font-bold text-slate-800 mb-2">${report.title}</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed mb-4">${report.summary}</p>
+                        
+                        <div class="flex flex-wrap gap-1 mb-4">
+                            ${report.relatedSystems.map(s => `<span class="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2 py-1 rounded-full">#${s}</span>`).join('')}
+                        </div>
+
+                        <div class="space-y-2 mb-4">
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Observed Patterns</p>
+                            ${report.observedPatterns.map(p => `<div class="flex items-start gap-2 text-xs text-slate-700"><span class="text-indigo-400">•</span>${p}</div>`).join('')}
+                        </div>
+
+                        <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4">
+                            <p class="text-[11px] font-bold text-indigo-600 mb-1">Today's Action</p>
+                            <p class="text-xs text-slate-700">${report.oneActionToday}</p>
+                        </div>
+
+                        <p class="text-[9px] text-slate-400 mb-4 italic leading-tight">${report.safetyNote}</p>
+
+                        <div class="border-t pt-3">
+                            <p class="text-[10px] font-bold text-slate-400 mb-2">References</p>
+                            ${report.references.map(ref => `<p class="text-[9px] text-slate-500 mb-1 leading-snug">[${ref.type}] ${ref.citation}</p>`).join('')}
+                        </div>
+                    </div>
+                    <p class="text-center text-[10px] text-slate-300">ANSWER는 시간이 지날수록 더 정확해집니다.</p>
+                </div>
+            `;
+        }
+
+        function saveToHistory(session) {
+            const historyItem = {
+                id: session.id,
+                createdAt: new Date().toISOString(),
+                userQuestion: session.questions[0],
+                finalReport: session.finalReport
+            };
+            history.unshift(historyItem);
+            localStorage.setItem('answer_history_v1', JSON.stringify(history));
+        }
+
+        function viewDetail(id) {
+            const item = history.find(h => h.id === id);
+            if (!item) return;
+
+            const modal = document.getElementById('report_modal');
+            const content = document.getElementById('modal-content');
+            
+            content.innerHTML = `
+                <div class="mb-6">
+                    <span class="text-[10px] font-bold text-slate-400">${new Date(item.createdAt).toLocaleString()}</span>
+                    <h3 class="text-xl font-bold text-slate-800 mt-1">${item.userQuestion}</h3>
+                </div>
+                ${renderFinalReportCard(item.finalReport)}
+                <div class="mt-8">
+                    <button onclick="deleteHistory('${item.id}')" class="text-xs text-red-400 underline">이 기억 삭제하기</button>
+                </div>
+            `;
+            
+            modal.showModal();
+            lucide.createIcons();
+        }
+
+        function deleteHistory(id) {
+            history = history.filter(h => h.id !== id);
+            localStorage.setItem('answer_history_v1', JSON.stringify(history));
+            document.getElementById('report_modal').close();
+            if (currentTab === 'body') renderContent();
+        }
+
+        function filterHistory() {
+            const query = document.getElementById('history-search').value.toLowerCase();
+            const filtered = history.filter(h => 
+                h.userQuestion.toLowerCase().includes(query) || 
+                h.finalReport.relatedSystems.some(s => s.toLowerCase().includes(query))
+            );
+            document.getElementById('history-list').innerHTML = renderHistoryItems(filtered);
+            lucide.createIcons();
+        }
+
+        function calculateAreaStatus() {
+            const areas = [
+                { name: "수면 리듬", keywords: ["잠", "수면", "피곤", "피로"], status: "안정적", color: "bg-emerald-400", count: 0 },
+                { name: "소화 반응", keywords: ["소화", "위", "배", "더부룩", "가스"], status: "안정적", color: "bg-emerald-400", count: 0 },
+                { name: "에너지 대사", keywords: ["기운", "활력", "피로", "무기력"], status: "안정적", color: "bg-emerald-400", count: 0 },
+                { name: "스트레스/심리", keywords: ["긴장", "불안", "두근", "스트레스"], status: "안정적", color: "bg-emerald-400", count: 0 }
+            ];
+
+            history.forEach(h => {
+                areas.forEach(a => {
+                    if (a.keywords.some(k => h.userQuestion.includes(k))) a.count++;
+                });
+            });
+
+            areas.forEach(a => {
+                if (a.count >= 3) { a.status = "주의"; a.color = "bg-amber-400"; }
+                else if (a.count >= 1) { a.status = "관찰중"; a.color = "bg-sky-400"; }
+            });
+
+            return areas;
+        }
+
+        // --- Start App ---
+        window.onload = init;
+    </script>
 </body>
 </html>
+<!-- 
+    [배포를 위한 서버리스 함수 구조 제안]
+    Vercel 배포 시 /api/chat.js 파일을 생성하고 아래와 같이 OpenAI API를 연동하세요:
+    
+    import OpenAI from 'openai';
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    
+    export default async function handler(req, res) {
+        const { messages } = req.body;
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4-turbo-preview",
+            messages: [
+                { role: "system", content: "당신은 ANSWER의 건강 파트너 AI입니다. 진단하지 말고 의학적 추론만 제공하세요. 6개 섹션 형식을 지키세요." },
+                ...messages
+            ],
+        });
+        res.status(200).json(completion.choices[0].message);
+    }
+-->
+<ctrl46>
