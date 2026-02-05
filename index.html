@@ -1,9 +1,10 @@
+```html
 <!DOCTYPE html>
 <html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ANSWER - Phase 1 Final</title>
+  <title>ANSWER - Phase 1 Final (JSON)</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
@@ -92,8 +93,10 @@
   <script>
     // --- State Management ---
     let currentTab = 'home';
+    // history item (v2):
+    // { id, createdAt, userQuestion, answerSnapshot, turns:[{q,aJson}] }
     let history = JSON.parse(localStorage.getItem('answer_history_v1')) || [];
-    let currentSession = null; // { id, questions: [], responses: [], step: 0 }
+    let currentSession = null; // { id, questions: [], responses: [], step: 0, turns: [] }
     let isTyping = false;
 
     // PATCH-1: placeholder timer 중복 실행 방지용
@@ -228,7 +231,9 @@
     }
 
     function renderBody(container) {
-      const summary = history.length > 0 ? (history[0]?.finalReport?.summary ?? "") : "아직 기록된 역사가 없습니다. 첫 질문을 시작해보세요.";
+      const summary = history.length > 0
+        ? (history[0]?.answerSnapshot?.summary ?? "")
+        : "아직 기록된 역사가 없습니다. 첫 질문을 시작해보세요.";
       const areaStatus = calculateAreaStatus();
 
       container.innerHTML = `
@@ -286,7 +291,7 @@
             <button class="btn btn-sm btn-outline border-slate-300 text-slate-500 hover:bg-slate-200 hover:border-slate-200 rounded-full px-6">파일 선택</button>
           </section>
 
-          <p class="text-center text-[10px] text-slate-300 mb-10">ANSWER v0.0.8 | Memory gets more accurate over time.</p>
+          <p class="text-center text-[10px] text-slate-300 mb-10">ANSWER v0.0.9 | JSON memory enabled.</p>
         </div>
       `;
       lucide.createIcons();
@@ -298,7 +303,7 @@
         <div onclick="viewDetail('${item.id}')" class="bg-white p-4 rounded-2xl border border-slate-50 shadow-sm flex justify-between items-center active:scale-[0.98] transition-transform">
           <div class="flex-1">
             <div class="flex gap-1 mb-1">
-              ${(item?.finalReport?.relatedSystems || []).map(tag => `<span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${escapeHTML(tag)}</span>`).join('')}
+              ${((item?.answerSnapshot?.top3) || []).map(tag => `<span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${escapeHTML(tag)}</span>`).join('')}
             </div>
             <p class="text-sm text-slate-700 font-medium truncate pr-4">${escapeHTML(item.userQuestion)}</p>
             <span class="text-[10px] text-slate-400">${new Date(item.createdAt).toLocaleDateString()}</span>
@@ -322,7 +327,7 @@
       if (!text || isTyping) return;
 
       if (!currentSession) {
-        currentSession = { id: Date.now().toString(), questions: [text], responses: [], step: 0 };
+        currentSession = { id: Date.now().toString(), questions: [text], responses: [], step: 0, turns: [] };
       } else {
         currentSession.questions.push(text);
         currentSession.step++;
@@ -340,26 +345,36 @@
     }
 
     // =========================
-    // Real API helper (safe)
+    // Real API helper (JSON)
     // =========================
     async function fetchAnswerFromAPI({ userText, session }) {
-      const payload = {
+      const turns = Array.isArray(session?.turns) ? session.turns : [];
+      const payloadAnswer = {
+        mode: "counsel",
+        text: userText,
+        turns,     // [{q, aJson}]
+        myBody: {} // 추후 확장
+      };
+
+      // 레거시 /api/chat 호환 payload (혹시 남아있을 때만)
+      const payloadChat = {
         input: userText,
         message: userText,
-        messages: buildMessages(session),
+        messages: buildMessagesLegacy(session),
         sessionId: session?.id,
         step: session?.step ?? 0,
         questions: session?.questions ?? [],
       };
 
-      // PATCH-API: 두 엔드포인트 순차 시도
       let lastErr = null;
+
       for (const endpoint of API_ENDPOINTS) {
         try {
+          const isAnswer = endpoint.includes("/api/answer");
           const res = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(isAnswer ? payloadAnswer : payloadChat),
           });
 
           if (!res.ok) {
@@ -370,15 +385,24 @@
           }
 
           const data = await res.json();
-          return extractAssistantText(data);
+
+          if (data && typeof data.answer === "object" && data.answer) {
+            return { kind: "answer_json", answer: data.answer };
+          }
+
+          const text = extractAssistantTextLegacy(data);
+          return { kind: "text", text };
+
         } catch (e) {
           lastErr = e;
         }
       }
+
       throw lastErr || new Error("No available API endpoint.");
     }
 
-    function buildMessages(session) {
+    // 레거시 /api/chat 대응용
+    function buildMessagesLegacy(session) {
       const msgs = [
         { role: "system", content: "You are ANSWER, a health partner. Do not diagnose. Ask follow-ups and provide practical guidance." }
       ];
@@ -393,34 +417,21 @@
       return msgs;
     }
 
-    function stripHTML(html) {
-      if (!html) return "";
-      const tmp = document.createElement("div");
-      tmp.innerHTML = html;
-      return (tmp.textContent || tmp.innerText || "").trim();
-    }
-
-    function extractAssistantText(data) {
+    function extractAssistantTextLegacy(data) {
       if (typeof data?.text === "string") return data.text;
       if (typeof data?.output_text === "string") return data.output_text;
       if (typeof data?.answer === "string") return data.answer;
       if (typeof data?.result === "string") return data.result;
       if (typeof data?.message?.content === "string") return data.message.content;
-
-      try {
-        if (Array.isArray(data?.output)) {
-          for (const item of data.output) {
-            if (Array.isArray(item?.content)) {
-              for (const c of item.content) {
-                if (c?.type === "output_text" && typeof c?.text === "string") return c.text;
-              }
-            }
-          }
-        }
-      } catch (_) {}
-
       if (typeof data === "string") return data;
       return JSON.stringify(data);
+    }
+
+    function stripHTML(html) {
+      if (!html) return "";
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html;
+      return (tmp.textContent || tmp.innerText || "").trim();
     }
 
     // =========================
@@ -439,109 +450,118 @@
       return escapeHTML(str).replace(/\n/g, "<br>");
     }
 
-    async function simulateAIResponse() {
-      const step = currentSession.step;
-      const latestUserText = currentSession.questions[currentSession.questions.length - 1];
+    // =========================
+    // Answer Cards Renderer (JSON)
+    // =========================
+    function renderAnswerCards(answer) {
+      const summary = answer?.summary || "정보가 부족해 우선 핵심만 정리할게.";
+      const top3 = Array.isArray(answer?.top3) ? answer.top3 : ["정보부족", "정보부족", "정보부족"];
+      const action = answer?.action || "지금 상태를 한 문장으로 적어줘.";
+      const nextQ = answer?.nextQuestion || "가장 불편한 증상/목표가 뭐야?";
+      const evidence = answer?.evidenceType || "사용자입력";
+      const redFlag = answer?.redFlag || "뚜렷한 위험신호 없음";
 
-      let responseText = "";
-      try {
-        responseText = await fetchAnswerFromAPI({ userText: latestUserText, session: currentSession });
-      } catch (e) {
-        console.error(e);
-        responseText = "서버 연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.";
-      }
-
-      if (step < 2) {
-        currentSession.responses.push(safeTextWithLineBreaks(responseText));
-        return;
-      }
-
-      const finalReport = generateFinalReport({
-        questions: currentSession.questions,
-        step: currentSession.step
-      });
-
-      if (responseText && typeof responseText === "string") {
-        finalReport.summary = responseText;
-      }
-
-      currentSession.finalReport = finalReport;
-      saveToHistory(currentSession);
-
-      const cardHTML = renderFinalReportCard(finalReport);
-      currentSession.responses.push(cardHTML);
-    }
-
-    function generateFinalReport(session) {
-      const q = session.questions[0] ?? "";
-      return {
-        title: "종합 신체 흐름 분석",
-        summary: `지금 질문만으로도 몸의 신호가 보입니다. ${q}와 관련된 불편함은 단순한 일시적 증상이 아니라, 현재 몸의 에너지가 '회복 모드'보다는 '대처 모드'에 집중되어 있음을 시사합니다.`,
-        relatedSystems: q.includes('잠') ? ["수면 리듬", "신경계"] : ["소화계", "에너지 대사"],
-        observedPatterns: [
-          "야간 회복 호르몬의 불균형 가능성",
-          "신경계 긴장도가 높은 상태 유지",
-          "특정 시간대 에너지 저하 패턴"
-        ],
-        oneActionToday: q.includes('잠')
-          ? "오늘 밤 10시 이후 스마트폰 사용을 중단하고 10분간 명상을 해보세요."
-          : "다음 식사 시 평소보다 2배 더 천천히 씹어보세요.",
-        safetyNote: "이 분석은 의학적 진단이 아닙니다. 심한 통증이나 고열이 동반된다면 즉시 전문의와 상담하십시오.",
-        references: [
-          { type: "textbook", citation: "Guyton & Hall. Textbook of Medical Physiology." },
-          { type: "paper", citation: "Walker M. Why We Sleep: Unlocking the Power of Sleep and Dreams." }
-        ]
-      };
-    }
-
-    function renderFinalReportCard(report) {
       return `
-        <div class="flex flex-col gap-4">
-          <div class="flex items-center gap-2 text-indigo-600">
-            <i data-lucide="check-circle" class="w-5 h-5"></i>
-            <span class="font-bold text-base">FINAL REPORT</span>
+        <div class="flex flex-col gap-3">
+          <div class="bg-white rounded-2xl p-4 premium-shadow border border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-1">요약</div>
+            <div class="text-sm text-slate-800 leading-relaxed">${escapeHTML(summary)}</div>
           </div>
-          <div class="bg-white rounded-xl p-4 premium-shadow border border-indigo-50">
-            <h4 class="font-bold text-slate-800 mb-2">${escapeHTML(report.title)}</h4>
-            <p class="text-xs text-slate-600 leading-relaxed mb-4">${safeTextWithLineBreaks(report.summary)}</p>
 
-            <div class="flex flex-wrap gap-1 mb-4">
-              ${(report.relatedSystems || []).map(s => `<span class="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2 py-1 rounded-full">#${escapeHTML(s)}</span>`).join('')}
-            </div>
-
-            <div class="space-y-2 mb-4">
-              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Observed Patterns</p>
-              ${(report.observedPatterns || []).map(p => `<div class="flex items-start gap-2 text-xs text-slate-700"><span class="text-indigo-400">•</span>${escapeHTML(p)}</div>`).join('')}
-            </div>
-
-            <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4">
-              <p class="text-[11px] font-bold text-indigo-600 mb-1">Today's Action</p>
-              <p class="text-xs text-slate-700">${escapeHTML(report.oneActionToday)}</p>
-            </div>
-
-            <p class="text-[9px] text-slate-400 mb-4 italic leading-tight">${escapeHTML(report.safetyNote)}</p>
-
-            <div class="border-t pt-3">
-              <p class="text-[10px] font-bold text-slate-400 mb-2">References</p>
-              ${(report.references || []).map(ref => `<p class="text-[9px] text-slate-500 mb-1 leading-snug">[${escapeHTML(ref.type)}] ${escapeHTML(ref.citation)}</p>`).join('')}
+          <div class="bg-white rounded-2xl p-4 premium-shadow border border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-2">가능성 TOP3</div>
+            <div class="flex flex-wrap gap-2">
+              ${top3.slice(0,3).map(x => `
+                <span class="text-[11px] px-3 py-1 rounded-full bg-slate-100 text-slate-700">${escapeHTML(x || "정보부족")}</span>
+              `).join("")}
             </div>
           </div>
-          <p class="text-center text-[10px] text-slate-300">ANSWER는 시간이 지날수록 더 정확해집니다.</p>
+
+          <div class="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
+            <div class="text-[11px] font-semibold text-indigo-600 mb-1">지금 할 1가지</div>
+            <div class="text-sm text-slate-800">${escapeHTML(action)}</div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-4 premium-shadow border border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-1">다음 질문</div>
+            <div class="text-sm text-slate-800">${escapeHTML(nextQ)}</div>
+          </div>
+
+          <div class="flex gap-2">
+            <div class="flex-1 bg-white rounded-2xl p-3 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 mb-1">근거 타입</div>
+              <div class="text-[12px] text-slate-700">${escapeHTML(evidence)}</div>
+            </div>
+            <div class="flex-1 bg-white rounded-2xl p-3 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 mb-1">위험신호</div>
+              <div class="text-[12px] text-slate-700">${escapeHTML(redFlag)}</div>
+            </div>
+          </div>
         </div>
       `;
     }
 
-    function saveToHistory(session) {
-      const historyItem = {
-        id: session.id,
-        createdAt: new Date().toISOString(),
-        userQuestion: session.questions[0] ?? "",
-        finalReport: session.finalReport
+    // =========================
+    // Chat flow: API -> cards -> history
+    // =========================
+    async function simulateAIResponse() {
+      const step = currentSession.step;
+      const latestUserText = currentSession.questions[currentSession.questions.length - 1];
+
+      let result;
+      try {
+        result = await fetchAnswerFromAPI({ userText: latestUserText, session: currentSession });
+      } catch (e) {
+        console.error(e);
+        currentSession.responses.push(`
+          <div class="text-sm text-slate-600">서버 연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.</div>
+        `);
+        return;
+      }
+
+      if (result.kind === "answer_json") {
+        const answer = result.answer;
+
+        // turns 1:1 저장 (누적 버그 근본 해결)
+        currentSession.turns.push({ q: latestUserText, aJson: answer });
+
+        // 카드형 렌더
+        currentSession.responses.push(renderAnswerCards(answer));
+
+        // 평균 2회 문진(최대 3회) 기준: step>=1부터 저장 시작
+        // step: 0(첫 질문), 1(두 번째 질문), 2(세 번째 질문)
+        if (step >= 1) {
+          const historyItem = {
+            id: currentSession.id,
+            createdAt: new Date().toISOString(),
+            userQuestion: currentSession.questions[0] ?? "",
+            answerSnapshot: answer,
+            turns: currentSession.turns.slice(0, 3)
+          };
+          history.unshift(historyItem);
+          localStorage.setItem('answer_history_v1', JSON.stringify(history));
+        }
+
+        return;
+      }
+
+      // 레거시 텍스트 수습
+      const responseText = (result.text || "").trim() || "정보가 부족해요. 한 문장으로 다시 말해줄래?";
+      const fallback = {
+        summary: responseText,
+        top3: ["정보부족", "정보부족", "정보부족"],
+        action: "지금 상태를 한 문장으로 적어줘.",
+        nextQuestion: "가장 불편한 증상/목표가 뭐야?",
+        evidenceType: "사용자입력",
+        redFlag: "뚜렷한 위험신호 없음"
       };
-      history.unshift(historyItem);
-      localStorage.setItem('answer_history_v1', JSON.stringify(history));
+      currentSession.turns.push({ q: latestUserText, aJson: fallback });
+      currentSession.responses.push(`<div class="text-sm text-slate-700">${safeTextWithLineBreaks(responseText)}</div>`);
     }
 
+    // =========================
+    // History modal / controls
+    // =========================
     function viewDetail(id) {
       const item = history.find(h => h.id === id);
       if (!item) return;
@@ -549,12 +569,28 @@
       const modal = document.getElementById('report_modal');
       const content = document.getElementById('modal-content');
 
+      const a = item.answerSnapshot || {};
+
       content.innerHTML = `
         <div class="mb-6">
           <span class="text-[10px] font-bold text-slate-400">${new Date(item.createdAt).toLocaleString()}</span>
           <h3 class="text-xl font-bold text-slate-800 mt-1">${escapeHTML(item.userQuestion)}</h3>
         </div>
-        ${renderFinalReportCard(item.finalReport)}
+
+        <div class="bg-white rounded-3xl p-5 premium-shadow border border-slate-100">
+          ${renderAnswerCards(a)}
+
+          <div class="mt-4 pt-4 border-t border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-2">문진 기록 (최대 3회)</div>
+            ${(item.turns || []).map(t => `
+              <div class="mb-3">
+                <div class="text-[11px] text-slate-500">Q: ${escapeHTML(t.q || "")}</div>
+                <div class="text-[11px] text-slate-700">A: ${escapeHTML((t.aJson && t.aJson.summary) ? t.aJson.summary : "")}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
         <div class="mt-8">
           <button onclick="deleteHistory('${item.id}')" class="text-xs text-red-400 underline">이 기억 삭제하기</button>
         </div>
@@ -577,7 +613,7 @@
 
       const filtered = history.filter(h =>
         (h.userQuestion || "").toLowerCase().includes(query) ||
-        (h?.finalReport?.relatedSystems || []).some(s => String(s).toLowerCase().includes(query))
+        ((h?.answerSnapshot?.top3 || []).some(s => String(s).toLowerCase().includes(query)))
       );
 
       const list = document.getElementById('history-list');
@@ -612,3 +648,4 @@
   </script>
 </body>
 </html>
+```
