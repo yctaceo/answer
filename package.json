@@ -1,7 +1,8 @@
 {
-  "name": "answer",
-  "private": true,
-  "type": "module",
+  "name": "answer-mvp",
+  "version": "1.0.0",
+  "description": "My Body Signal Partner - ANSWER",
+  "main": "api/answer.js",
   "dependencies": {
     "openai": "^4.0.0"
   }

@@ -1,232 +1,74 @@
-// /api/answer.js
-import OpenAI from "openai";
+const { OpenAI } = require('openai');
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-function safeJsonParse(str, fallback = null) {
-  try { return JSON.parse(str); } catch { return fallback; }
-}
-
-// 모델이 JSON 앞뒤로 말 붙이는 경우를 대비해 JSON 객체만 추출
-function extractFirstJsonObject(text) {
-  if (!text) return null;
-  const s = text.trim();
-
-  // 이미 JSON이면
-  const direct = safeJsonParse(s, null);
-  if (direct && typeof direct === "object") return direct;
-
-  // 첫 '{'부터 마지막 '}'까지 잘라서 시도
-  const first = s.indexOf("{");
-  const last = s.lastIndexOf("}");
-  if (first >= 0 && last > first) {
-    const chunk = s.slice(first, last + 1);
-    const obj = safeJsonParse(chunk, null);
-    if (obj && typeof obj === "object") return obj;
-  }
-  return null;
-}
-
-function normalizeAnswer(obj, userText = "") {
-  const out = {
-    summary: "",
-    top3: ["", "", ""],
-    action: "",
-    nextQuestion: "",
-    evidenceType: "",
-    redFlag: "",
-    meta: {
-      version: "answer-json-v1",
-      lang: "ko",
-      missing: []
-    }
-  };
-
-  if (!obj || typeof obj !== "object") {
-    out.summary = "정보가 부족해 우선 핵심만 정리할게.";
-    out.top3 = ["정보부족", "정보부족", "정보부족"];
-    out.action = "현재 증상/목표를 한 문장으로 적어줘.";
-    out.nextQuestion = "지금 가장 불편한 증상이나 목표를 한 문장으로 말해줄래?";
-    out.evidenceType = "사용자입력";
-    out.redFlag = "뚜렷한 위험신호 없음";
-    out.meta.missing.push("all");
-    return out;
-  }
-
-  const pickStr = (v) => (typeof v === "string" ? v.trim() : "");
-  const pickArr3 = (v) => {
-    if (Array.isArray(v)) {
-      const a = v.map(x => pickStr(x)).filter(Boolean);
-      return [a[0] || "", a[1] || "", a[2] || ""];
-    }
-    if (typeof v === "string") {
-      const parts = v.split(",").map(s => s.trim()).filter(Boolean);
-      return [parts[0] || "", parts[1] || "", parts[2] || ""];
-    }
-    return ["", "", ""];
-  };
-
-  out.summary = pickStr(obj.summary);
-  out.top3 = pickArr3(obj.top3);
-  out.action = pickStr(obj.action);
-  out.nextQuestion = pickStr(obj.nextQuestion);
-  out.evidenceType = pickStr(obj.evidenceType);
-  out.redFlag = pickStr(obj.redFlag);
-
-  // 최소 보정
-  if (!out.summary) out.meta.missing.push("summary");
-  if (!out.top3.some(Boolean)) out.meta.missing.push("top3");
-  if (!out.action) out.meta.missing.push("action");
-  if (!out.nextQuestion) out.meta.missing.push("nextQuestion");
-  if (!out.evidenceType) out.meta.missing.push("evidenceType");
-  if (!out.redFlag) out.meta.missing.push("redFlag");
-
-  // nextQuestion는 질문 1개로 강제
-  if (out.nextQuestion && !out.nextQuestion.endsWith("?")) out.nextQuestion += "?";
-  // top3 빈칸 채우기
-  for (let i = 0; i < 3; i++) if (!out.top3[i]) out.top3[i] = "정보부족";
-
-  // redFlag 기본값
-  if (!out.redFlag) out.redFlag = "뚜렷한 위험신호 없음";
-
-  // 극단적으로 다 비어있을 때 대비
-  if (out.meta.missing.length >= 5) {
-    out.summary = out.summary || "정보가 부족해 우선 정리할게.";
-    out.action = out.action || "지금 상태를 한 문장으로 적어줘.";
-    out.nextQuestion = out.nextQuestion || "가장 불편한 증상/목표가 뭐야?";
-    out.evidenceType = out.evidenceType || "사용자입력";
-    out.redFlag = out.redFlag || "뚜렷한 위험신호 없음";
-  }
-
-  return out;
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const body = typeof req.body === "string" ? safeJsonParse(req.body, {}) : (req.body || {});
-    const mode = (body.mode || "counsel").toString(); // "counsel" | "mybody"
-    const userText = (body.text || "").toString().trim();
-    const turns = Array.isArray(body.turns) ? body.turns.slice(-12) : []; // [{q,aJson}] or {q,aHtml} etc
-    const myBody = body.myBody || {};
+  const { message, history = [] } = req.body;
 
-    if (!userText) return res.status(400).json({ error: "Missing text" });
+  const systemRole = `
+    당신은 사용자의 몸 상태와 신호를 듣고 이를 차분하게 정리해주는 파트너 'ANSWER'입니다.
+    전문가나 의사처럼 군림하지 말고, 친구처럼 사용자의 신호를 기록하고 연결해주는 역할을 수행하세요.
 
-    const system = [
-너는 ANSWER라는 개인 건강 파트너다.
+    [규칙]
+    1. 캐릭터: "내 몸을 정리해주는 파트너". 기능의학/전문가 언급 금지.
+    2. 말투: "입력해주신 내용은 ~와 연결될 수 있어요", "~일 때 자주 관찰되는 신호예요" 등 완충형 표현만 사용. (입니다/확실합니다 절대 금지)
+    3. Action: 바로 실행 가능한 구체적 행동 1개 (숫자 포함).
+    4. Next Question: 1개만, 질문 형식.
+    5. References (최대 2개): 반드시 다음 2줄 형식을 문자열로 반환. 
+       - 1줄: 사실 평서문
+       - 2줄: — 출처명, 연도
+       - 예: "카페인은 부신 호르몬 분비를 일시적으로 촉진할 수 있습니다.\n— 내분비학회지, 2021"
+    6. evidenceType: 사용자입력 / 일반생리 / 전문가합의 / 가이드라인 / 연구 중 하나만 선택.
+    7. redFlag: 위험 요소가 없으면 "뚜렷한 위험신호 없음" 문자열 고정.
 
-역할:
-- 진단하거나 단정하지 않는다.
-- 사용자가 느끼는 신체 변화를 ‘사람 말’로 정리해준다.
-- 항상 다음 행동 1개와 다음 질문 1개만 제시한다.
-- 신뢰는 설명하지 않고, 조용히 보여준다.
-
-출력 형식:
-- 반드시 JSON 객체 1개만 출력한다.
-- 인사, 설명, 메타 발언, 마크다운, 코드블록은 절대 출력하지 않는다.
-
-JSON 스키마:
-{
-  "summary": string,
-  "top3": [string, string, string],
-  "action": string,
-  "nextQuestion": string,
-  "evidenceType": string,
-  "redFlag": string,
-  "references": [
+    [Output JSON Schema]
     {
-      "title": string,
-      "source": string
+      "summary": "완충형 정리 문장",
+      "top3": ["태그1", "태그2", "태그3"],
+      "action": "숫자 포함 행동 1개",
+      "nextQuestion": "다음 질문?",
+      "evidenceType": "값 고정",
+      "redFlag": "위험신호 혹은 고정문구",
+      "references": ["2줄문자열1", "2줄문자열2"]
     }
-  ]
-}
+  `;
 
-톤 규칙 (매우 중요):
+  const fallback = {
+    summary: "말씀해주신 신호들을 잘 기록해두었어요. 지금은 평소와 비슷한 흐름일 수 있어요.",
+    top3: ["상태기록", "신호관찰", "일상"],
+    action: "물 1컵을 천천히 마시며 5분간 휴식해 보세요.",
+    nextQuestion: "이 현상이 하루 중 언제 주로 나타나나요?",
+    evidenceType: "사용자입력",
+    redFlag: "뚜렷한 위험신호 없음",
+    references: []
+  };
 
-1. summary
-- 반드시 완충형 문장으로 작성한다.
-- “~했을 수 있어요” 또는 “~일 때 흔히 나타나요” 중 하나를 사용한다.
-- “~입니다”, “확실합니다”, “판단됩니다” 사용 금지.
-- ‘흐름, 상태, 신호, 패턴’ 같은 추상어 사용 금지.
-- 사용자가 실제로 느꼈을 법한 관찰 → 그로 인해 생길 수 있는 변화 순서로 쓴다.
-- 요약은 1~2문장, 사람 말처럼 자연스럽게 쓴다.
-
-2. top3
-- 병명, 진단명, 전문 용어를 쓰지 않는다.
-- 몸의 반응, 생활 요인, 환경 요인을 짧게 쓴다.
-- 각 항목은 명사형 또는 짧은 구문으로 작성한다.
-
-3. action
-- 단정형 문장으로 작성한다.
-- 오늘 바로 할 수 있는 행동 1개만 제시한다.
-- 시간, 횟수, 양 중 하나를 반드시 포함한다.
-- 부담 없고 실패해도 괜찮은 행동을 우선한다.
-
-4. nextQuestion
-- 질문은 반드시 1개만 작성한다.
-- 추가 설명 요구 금지.
-- 선택형 또는 단일 정보 질문만 허용한다.
-- 반드시 물음표로 끝낸다.
-
-5. evidenceType
-- 근거의 ‘유형’만 작성한다.
-- 다음 중 하나만 사용한다:
-  사용자입력 / 일반생리 / 전문가합의 / 가이드라인 / 연구
-
-6. redFlag
-- 즉시 진료 고려가 필요한 경우만 짧게 작성한다.
-- 해당 없으면 반드시 “뚜렷한 위험신호 없음”이라고 쓴다.
-
-7. references
-- 선택 항목이다. 필요 없으면 빈 배열 [] 로 출력한다.
-- 사용자가 신뢰 근거를 기대할 만한 질문일 때만 작성한다.
-- 최대 2개까지만 작성한다.
-- summary, action, nextQuestion에는 절대 언급하지 않는다.
-- 설명 문장, 해설 문구를 쓰지 않는다.
-- 형식은 다음을 따른다:
-
-  title:
-  - 사람이 이해할 수 있는 평서문
-  - 핵심 사실만 담는다.
-
-  source:
-  - 학술지명 또는 가이드라인 명 + 연도만 표기한다.
-  - URL, DOI, 저자명 금지.
-
-행동 원칙:
-- 정확함보다 ‘항상 쓸 수 있는 밀도’를 우선한다.
-- 전문가처럼 말하지 않는다.
-- 사용자의 머릿속을 대신 정리해주는 톤을 유지한다.
-- 사용자가 “아, 내 얘기네”라고 느끼게 하는 것이 최우선 목표다.
-    ].join("\n");
-
-    const context = [
-      `mode=${mode}`,
-      "turns:",
-      JSON.stringify(turns).slice(0, 2000),
-      "myBody:",
-      JSON.stringify(myBody).slice(0, 2000),
-      "user:",
-      userText
-    ].join("\n");
-
-    const completion = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-5",
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: context }
-      ],
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemRole }, ...history, { role: "user", content: message }],
+      response_format: { type: "json_object" }
     });
 
-    const raw = (completion.choices?.[0]?.message?.content || "").trim();
-    const obj = extractFirstJsonObject(raw);
-    const answer = normalizeAnswer(obj, userText);
+    let result = JSON.parse(response.choices[0].message.content);
+    
+    // 자연스러운 완충형 보정
+    if (result.summary) {
+        result.summary = result.summary
+          .replace(/입니다/g, "일 수 있어요")
+          .replace(/확실합니다/g, "연결되는 것 같아요")
+          .replace(/판단됩니다/g, "보여요");
+    }
+    
+    if (!result.redFlag) result.redFlag = "뚜렷한 위험신호 없음";
+    if (!result.references) result.references = [];
 
-    return res.status(200).json({ answer });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error" });
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(200).json(fallback);
   }
 }
