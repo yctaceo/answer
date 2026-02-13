@@ -29,7 +29,7 @@
             </div>
             <div id="messages" class="space-y-6 pb-10"></div>
         </div>
-        
+
         <div class="p-4 bg-white border-t border-gray-100">
             <div class="relative flex items-center">
                 <input type="text" id="userInput" class="w-full p-4 pr-12 rounded-2xl bg-gray-100 outline-none text-sm" placeholder="증상을 말해주세요..." onkeypress="if(event.keyCode==13) sendMessage()">
@@ -60,7 +60,7 @@
 
         function escapeHTML(str) {
             const div = document.createElement('div');
-            div.textContent = str;
+            div.textContent = String(str ?? "");
             return div.innerHTML;
         }
 
@@ -77,11 +77,33 @@
             if(tab === 'body') renderBody();
         }
 
+        // Defensive: validate minimal JSON contract
+        function normalizeResponse(obj) {
+            if (!obj || typeof obj !== "object") return null;
+
+            const safe = {
+                summary: typeof obj.summary === "string" ? obj.summary : "",
+                top3: Array.isArray(obj.top3) ? obj.top3.map(x => String(x ?? "")) : [],
+                action: typeof obj.action === "string" ? obj.action : "",
+                nextQuestion: typeof obj.nextQuestion === "string" ? obj.nextQuestion : "",
+                evidenceType: typeof obj.evidenceType === "string" ? obj.evidenceType : "사용자입력",
+                redFlag: typeof obj.redFlag === "string" ? obj.redFlag : "뚜렷한 위험신호 없음",
+                references: Array.isArray(obj.references) ? obj.references.map(x => String(x ?? "")) : []
+            };
+
+            safe.top3 = safe.top3.slice(0, 3);
+            while (safe.top3.length < 3) safe.top3.push("관찰 필요");
+
+            safe.references = safe.references.slice(0, 2).filter(r => r.trim().length > 0);
+
+            return safe;
+        }
+
         async function sendMessage() {
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if(!text) return;
-            
+
             appendMessage('user', text);
             input.value = '';
 
@@ -95,13 +117,14 @@
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ message: text, history: turns })
                         });
-                        if(res.ok) { 
+                        if(res.ok) {
                             const json = await res.json();
-                            if(json && json.summary) { response = json; break; }
+                            const normalized = normalizeResponse(json);
+                            if(normalized && normalized.summary) { response = normalized; break; }
                         }
                     } catch(e) {}
                 }
-                
+
                 if(response) {
                     appendMessage('bot', response);
                     saveToBody(text, response);
@@ -117,29 +140,37 @@
             const wrap = document.getElementById('messages');
             const div = document.createElement('div');
             div.className = role === 'user' ? 'flex justify-end' : 'flex flex-col items-start w-full';
-            
+
             if(role === 'user') {
                 div.innerHTML = `<div class="bg-black text-white px-4 py-2 rounded-2xl rounded-tr-none text-sm max-w-[80%]">${escapeHTML(content)}</div>`;
             } else {
-                const refs = content.references ? content.references.map(r => `<div class="py-2 border-t border-gray-50 line-pre text-gray-500">${escapeHTML(r)}</div>`).join('') : '';
+                const refs = (content.references && content.references.length)
+                    ? content.references.map(r => `<div class="py-2 border-t border-gray-50 line-pre text-gray-500">${escapeHTML(r)}</div>`).join('')
+                    : '';
+
                 div.innerHTML = `
                     <div class="bg-white border border-gray-100 p-5 rounded-3xl rounded-tl-none w-full shadow-sm space-y-4">
                         <div class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">${escapeHTML(content.evidenceType)}</div>
                         <p class="text-[15px] leading-relaxed text-gray-800">${escapeHTML(content.summary)}</p>
+
                         <div class="flex flex-wrap gap-1">
-                            ${content.top3.map(t => `<span class="bg-gray-50 text-gray-400 px-2 py-0.5 rounded text-[10px]">#${t}</span>`).join('')}
+                            ${content.top3.map(t => `<span class="bg-gray-50 text-gray-400 px-2 py-0.5 rounded text-[10px]">#${escapeHTML(t)}</span>`).join('')}
                         </div>
+
                         <div class="bg-blue-50/50 p-3 rounded-2xl">
                             <span class="text-[10px] text-blue-400 font-bold block mb-1 uppercase italic">One Action</span>
                             <p class="text-sm text-blue-700 font-semibold">${escapeHTML(content.action)}</p>
                         </div>
+
                         <div class="text-sm font-medium pt-2 italic text-gray-900 border-t border-gray-50">"${escapeHTML(content.nextQuestion)}"</div>
+
                         ${refs ? `<details class="text-[10px] text-gray-300 mt-2"><summary class="cursor-pointer py-1">References</summary><div class="mt-2">${refs}</div></details>` : ''}
                     </div>
                 `;
             }
             wrap.appendChild(div);
-            
+
+            // near-bottom only auto-scroll (keep your rule)
             const win = document.getElementById('chat-window');
             if (win.scrollHeight - win.scrollTop - win.clientHeight < 300) {
                 win.scrollTo({ top: win.scrollHeight, behavior: 'smooth' });
@@ -154,17 +185,25 @@
 
         function renderBody() {
             if(bodyState.history.length === 0) return;
+
             document.getElementById('body-recent').innerText = bodyState.history[0].summary;
-            document.getElementById('body-tags').innerHTML = bodyState.tags.map(t => `<span class="px-3 py-1 bg-white border border-gray-100 rounded-full text-xs text-gray-500">#${t}</span>`).join('');
+
+            document.getElementById('body-tags').innerHTML = bodyState.tags
+                .map(t => `<span class="px-3 py-1 bg-white border border-gray-100 rounded-full text-xs text-gray-500">#${escapeHTML(t)}</span>`)
+                .join('');
+
             document.getElementById('body-history').innerHTML = bodyState.history.map(h => `
                 <div class="p-4 bg-white rounded-2xl border border-gray-50">
-                    <div class="text-[9px] text-gray-300 mb-1">${h.date} | ${escapeHTML(h.evidenceType)}</div>
+                    <div class="text-[9px] text-gray-300 mb-1">${escapeHTML(h.date)} | ${escapeHTML(h.evidenceType)}</div>
                     <div class="text-xs text-gray-400 mb-2">Q: ${escapeHTML(h.q)}</div>
                     <div class="text-sm text-gray-800">${escapeHTML(h.summary)}</div>
                     <div class="mt-2 text-[10px] text-red-400">🚩 ${escapeHTML(h.redFlag)}</div>
                 </div>
             `).join('');
         }
+
+        // initial render if any (optional)
+        // renderBody();
     </script>
 </body>
 </html>
