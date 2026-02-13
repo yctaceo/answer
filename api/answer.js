@@ -1,74 +1,140 @@
-const { OpenAI } = require('openai');
+import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+const ALLOWED_EVIDENCE = [
+  "사용자입력",
+  "일반생리",
+  "전문가합의",
+  "가이드라인",
+  "연구"
+];
 
-  const { message, history = [] } = req.body;
+function ensureBufferedTone(text = "") {
+  if (!text) return "지금은 몸의 반응을 조금 더 지켜봐도 괜찮을 수 있어요.";
+  
+  // 단정형 제거
+  text = text.replace(/입니다|확실합니다|판단됩니다/g, "했을 수 있어요");
 
-  const systemRole = `
-    당신은 사용자의 몸 상태와 신호를 듣고 이를 차분하게 정리해주는 파트너 'ANSWER'입니다.
-    전문가나 의사처럼 군림하지 말고, 친구처럼 사용자의 신호를 기록하고 연결해주는 역할을 수행하세요.
+  // 금지 추상어 제거
+  text = text.replace(/흐름|상태|신호|패턴/g, "");
 
-    [규칙]
-    1. 캐릭터: "내 몸을 정리해주는 파트너". 기능의학/전문가 언급 금지.
-    2. 말투: "입력해주신 내용은 ~와 연결될 수 있어요", "~일 때 자주 관찰되는 신호예요" 등 완충형 표현만 사용. (입니다/확실합니다 절대 금지)
-    3. Action: 바로 실행 가능한 구체적 행동 1개 (숫자 포함).
-    4. Next Question: 1개만, 질문 형식.
-    5. References (최대 2개): 반드시 다음 2줄 형식을 문자열로 반환. 
-       - 1줄: 사실 평서문
-       - 2줄: — 출처명, 연도
-       - 예: "카페인은 부신 호르몬 분비를 일시적으로 촉진할 수 있습니다.\n— 내분비학회지, 2021"
-    6. evidenceType: 사용자입력 / 일반생리 / 전문가합의 / 가이드라인 / 연구 중 하나만 선택.
-    7. redFlag: 위험 요소가 없으면 "뚜렷한 위험신호 없음" 문자열 고정.
+  return text;
+}
 
-    [Output JSON Schema]
-    {
-      "summary": "완충형 정리 문장",
-      "top3": ["태그1", "태그2", "태그3"],
-      "action": "숫자 포함 행동 1개",
-      "nextQuestion": "다음 질문?",
-      "evidenceType": "값 고정",
-      "redFlag": "위험신호 혹은 고정문구",
-      "references": ["2줄문자열1", "2줄문자열2"]
-    }
-  `;
+function normalizeResult(result) {
+  if (!result || typeof result !== "object") {
+    return fallbackJSON();
+  }
 
-  const fallback = {
-    summary: "말씀해주신 신호들을 잘 기록해두었어요. 지금은 평소와 비슷한 흐름일 수 있어요.",
-    top3: ["상태기록", "신호관찰", "일상"],
-    action: "물 1컵을 천천히 마시며 5분간 휴식해 보세요.",
-    nextQuestion: "이 현상이 하루 중 언제 주로 나타나나요?",
+  // summary
+  result.summary = ensureBufferedTone(result.summary);
+
+  // top3
+  if (!Array.isArray(result.top3)) result.top3 = [];
+  result.top3 = result.top3.slice(0, 3);
+  while (result.top3.length < 3) {
+    result.top3.push("관찰 필요");
+  }
+
+  // action → 숫자 포함 강제
+  if (!/\d/.test(result.action || "")) {
+    result.action = "오늘은 5분만이라도 천천히 호흡을 가다듬어 보세요.";
+  }
+
+  // nextQuestion
+  if (!result.nextQuestion || !result.nextQuestion.trim().endsWith("?")) {
+    result.nextQuestion = "이 증상은 언제부터 시작되었나요?";
+  }
+
+  // evidenceType
+  if (!ALLOWED_EVIDENCE.includes(result.evidenceType)) {
+    result.evidenceType = "사용자입력";
+  }
+
+  // redFlag
+  if (!result.redFlag) {
+    result.redFlag = "뚜렷한 위험신호 없음";
+  }
+
+  // references
+  if (!Array.isArray(result.references)) result.references = [];
+  result.references = result.references.slice(0, 2);
+
+  // 2줄 포맷 검증 (줄바꿈 + — 포함)
+  result.references = result.references.filter(ref => {
+    return typeof ref === "string" && ref.includes("\n— ");
+  });
+
+  return result;
+}
+
+function fallbackJSON() {
+  return {
+    summary: "지금은 몸의 반응을 조금 더 지켜봐도 괜찮을 수 있어요.",
+    top3: ["관찰 필요", "생활리듬 점검", "최근 변화 확인"],
+    action: "오늘은 물을 1컵 더 마셔보세요.",
+    nextQuestion: "이 증상은 최근에 더 심해졌나요?",
     evidenceType: "사용자입력",
     redFlag: "뚜렷한 위험신호 없음",
     references: []
   };
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const { message, history = [] } = req.body;
+
+  const systemPrompt = `
+You are ANSWER.
+
+You organize body experiences into clear observations.
+You never diagnose.
+You never sound authoritative.
+
+Rules:
+1. Use buffered tone: "~했을 수 있어요", "~일 때 흔히 나타나요".
+2. Never use deterministic wording.
+3. Give EXACTLY 1 action with a number (time/count/amount).
+4. Give EXACTLY 1 nextQuestion ending with '?'.
+5. References must follow this exact format:
+
+Fact sentence
+— Source Name, Year
+
+6. Maximum 2 references.
+7. Output JSON only.
+`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "system", content: systemRole }, ...history, { role: "user", content: message }],
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...history,
+        { role: "user", content: message }
+      ],
       response_format: { type: "json_object" }
     });
 
-    let result = JSON.parse(response.choices[0].message.content);
-    
-    // 자연스러운 완충형 보정
-    if (result.summary) {
-        result.summary = result.summary
-          .replace(/입니다/g, "일 수 있어요")
-          .replace(/확실합니다/g, "연결되는 것 같아요")
-          .replace(/판단됩니다/g, "보여요");
+    let parsed;
+    try {
+      parsed = JSON.parse(completion.choices[0].message.content);
+    } catch {
+      parsed = fallbackJSON();
     }
-    
-    if (!result.redFlag) result.redFlag = "뚜렷한 위험신호 없음";
-    if (!result.references) result.references = [];
 
-    return res.status(200).json(result);
+    const normalized = normalizeResult(parsed);
+
+    return res.status(200).json(normalized);
+
   } catch (error) {
-    return res.status(200).json(fallback);
+    console.error(error);
+    return res.status(200).json(fallbackJSON());
   }
 }
