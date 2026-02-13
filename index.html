@@ -1,209 +1,651 @@
+```html
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ANSWER</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .line-pre { white-space: pre-line; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ANSWER - Phase 1 Final (JSON)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .premium-shadow {
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 10px -2px rgba(0, 0, 0, 0.03);
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .fade-in { animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .loading-dots:after {
+      content: '.';
+      animation: dots 1.5s steps(5, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+      40% { color: #6366f1; text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+      60% { color: #6366f1; text-shadow: .25em 0 0 #6366f1, .5em 0 0 rgba(0,0,0,0); }
+      80%, 100% { color: #6366f1; text-shadow: .25em 0 0 #6366f1, .5em 0 0 #6366f1; }
+    }
+    /* Mobile Centering */
+    .app-container {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+  </style>
 </head>
-<body class="flex flex-col items-center min-h-screen bg-gray-50">
-    <!-- Navigation -->
-    <nav class="w-full max-w-md bg-white border-b border-gray-100 flex sticky top-0 z-50">
-        <button onclick="switchTab('home')" class="flex-1 py-4 text-sm font-bold border-b-2 border-black" id="btn-home">HOME</button>
-        <button onclick="switchTab('body')" class="flex-1 py-4 text-sm font-medium text-gray-400" id="btn-body">MY BODY</button>
+
+<body>
+  <div class="app-container bg-white shadow-xl">
+    <!-- Main Content Area -->
+    <main id="app-content" class="flex-1 pb-24 overflow-y-auto no-scrollbar">
+      <!-- Content will be injected here -->
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 w-full max-w-[480px] bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 py-3 flex justify-around items-center z-50">
+      <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center gap-1 text-indigo-600 transition-all">
+        <i data-lucide="message-square" class="w-6 h-6"></i>
+        <span class="text-[10px] font-medium">HOME</span>
+      </button>
+      <button onclick="switchTab('body')" id="nav-body" class="flex flex-col items-center gap-1 text-slate-400 transition-all">
+        <i data-lucide="brain-circuit" class="w-6 h-6"></i>
+        <span class="text-[10px] font-medium">MY BODY</span>
+      </button>
     </nav>
+  </div>
 
-    <!-- HOME Tab -->
-    <main id="tab-home" class="tab-content active w-full max-w-md flex flex-col h-[calc(100vh-120px)]">
-        <div id="chat-window" class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
-            <div class="text-center py-10">
-                <p class="text-gray-300 text-xs tracking-widest uppercase">My Body Signal Partner</p>
-                <h2 class="text-xl font-light mt-1">어떤 신호가 느껴지시나요?</h2>
+  <!-- Modal Template -->
+  <dialog id="report_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box p-0 bg-slate-50 overflow-hidden">
+      <div id="modal-content" class="p-6 pb-20"></div>
+      <div class="modal-action absolute top-2 right-4">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // --- State Management ---
+    let currentTab = 'home';
+    // history item (v2):
+    // { id, createdAt, userQuestion, answerSnapshot, turns:[{q,aJson}] }
+    let history = JSON.parse(localStorage.getItem('answer_history_v1')) || [];
+    let currentSession = null; // { id, questions: [], responses: [], step: 0, turns: [] }
+    let isTyping = false;
+
+    // PATCH-1: placeholder timer 중복 실행 방지용
+    let placeholderTimer = null;
+
+    // PATCH-API: /api/answer / /api/chat 모두 대응(백엔드 경로 불일치 방지)
+    const API_ENDPOINTS = ["/api/answer", "/api/chat"];
+
+    const placeholders = [
+      "요즘 밤에 잠이 잘 안 와요",
+      "식사 후에 항상 속이 더부룩해요",
+      "두 달째 생리를 안 하고 있어요",
+      "갑자기 가슴이 두근거릴 때가 있어요"
+    ];
+    let placeholderIdx = 0;
+
+    // --- Core Logic ---
+    function init() {
+      renderContent();
+      updateNav();
+      lucide.createIcons();
+      startPlaceholderRotation();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      renderContent();
+      updateNav();
+      lucide.createIcons();
+    }
+
+    // PATCH-NAV: replace 대신 add/remove로 확정 (꼬임 방지)
+    function updateNav() {
+      const homeBtn = document.getElementById('nav-home');
+      const bodyBtn = document.getElementById('nav-body');
+      if (!homeBtn || !bodyBtn) return;
+
+      if (currentTab === 'home') {
+        homeBtn.classList.add('text-indigo-600');
+        homeBtn.classList.remove('text-slate-400');
+
+        bodyBtn.classList.add('text-slate-400');
+        bodyBtn.classList.remove('text-indigo-600');
+      } else {
+        bodyBtn.classList.add('text-indigo-600');
+        bodyBtn.classList.remove('text-slate-400');
+
+        homeBtn.classList.add('text-slate-400');
+        homeBtn.classList.remove('text-indigo-600');
+      }
+    }
+
+    // PATCH-1: 중복 실행 방지 + 홈/세션 상태에서만 placeholder 변경
+    function startPlaceholderRotation() {
+      if (placeholderTimer) return;
+
+      placeholderTimer = setInterval(() => {
+        if (currentTab === 'home' && !currentSession) {
+          placeholderIdx = (placeholderIdx + 1) % placeholders.length;
+          const el = document.getElementById('main-input');
+          if (el) el.placeholder = placeholders[placeholderIdx];
+        }
+      }, 3000);
+    }
+
+    // --- Rendering ---
+    // PATCH-3: 사용자가 이미 아래쪽에 있을 때만 자동 스크롤
+    function renderContent() {
+      const container = document.getElementById('app-content');
+      if (!container) return;
+
+      const nearBottom = (container.scrollTop + container.clientHeight) >= (container.scrollHeight - 120);
+
+      if (currentTab === 'home') renderHome(container);
+      else renderBody(container);
+
+      requestAnimationFrame(() => {
+        if (nearBottom) container.scrollTop = container.scrollHeight;
+      });
+    }
+
+    function renderHome(container) {
+      if (!currentSession) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center min-h-[80vh] px-8 fade-in">
+            <h1 class="text-3xl font-light tracking-widest text-slate-800 mb-2">ANSWER</h1>
+            <p class="text-slate-400 text-sm mb-12">당신의 몸을 기억하는 파트너</p>
+
+            <div class="w-full relative">
+              <input type="text" id="main-input"
+                class="w-full bg-white border border-slate-200 rounded-2xl px-6 py-5 pr-14 premium-shadow outline-none focus:border-indigo-300 transition-all text-slate-700"
+                placeholder="${placeholders[0]}"
+                onkeypress="handleKeyPress(event)" />
+              <button onclick="handleSend()" class="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 hover:text-indigo-700 transition-colors">
+                <i data-lucide="arrow-up-circle" class="w-8 h-8"></i>
+              </button>
             </div>
-            <div id="messages" class="space-y-6 pb-10"></div>
-        </div>
-
-        <div class="p-4 bg-white border-t border-gray-100">
-            <div class="relative flex items-center">
-                <input type="text" id="userInput" class="w-full p-4 pr-12 rounded-2xl bg-gray-100 outline-none text-sm" placeholder="증상을 말해주세요..." onkeypress="if(event.keyCode==13) sendMessage()">
-                <button onclick="sendMessage()" class="absolute right-3 p-2 text-black">↑</button>
-            </div>
-        </div>
-    </main>
-
-    <!-- MY BODY Tab -->
-    <main id="tab-body" class="tab-content w-full max-w-md p-6 space-y-8">
-        <section>
-            <h3 class="text-xs font-bold text-gray-400 mb-4 tracking-tight">RECENT SUMMARY</h3>
-            <div id="body-recent" class="bg-white p-6 rounded-3xl shadow-sm text-gray-700 leading-relaxed border border-gray-50 italic">기록을 시작하면 첫 요약이 나타납니다.</div>
-        </section>
-        <section>
-            <h3 class="text-xs font-bold text-gray-400 mb-4 tracking-tight">AREAS I'M WATCHING</h3>
-            <div id="body-tags" class="flex flex-wrap gap-2"></div>
-        </section>
-        <section>
-            <h3 class="text-xs font-bold text-gray-400 mb-4 tracking-tight">HISTORY</h3>
-            <div id="body-history" class="space-y-4"></div>
-        </section>
-    </main>
-
-    <script>
-        let turns = [];
-        let bodyState = JSON.parse(localStorage.getItem('answer_v2') || '{"history": [], "tags": []}');
-
-        function escapeHTML(str) {
-            const div = document.createElement('div');
-            div.textContent = String(str ?? "");
-            return div.innerHTML;
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tab).classList.add('active');
-            document.querySelectorAll('nav button').forEach(el => {
-                el.classList.remove('border-black', 'font-bold', 'text-black');
-                el.classList.add('text-gray-400', 'font-medium');
-            });
-            const activeBtn = document.getElementById('btn-' + tab);
-            activeBtn.classList.add('border-black', 'font-bold', 'text-black');
-            activeBtn.classList.remove('text-gray-400');
-            if(tab === 'body') renderBody();
-        }
-
-        // Defensive: validate minimal JSON contract
-        function normalizeResponse(obj) {
-            if (!obj || typeof obj !== "object") return null;
-
-            const safe = {
-                summary: typeof obj.summary === "string" ? obj.summary : "",
-                top3: Array.isArray(obj.top3) ? obj.top3.map(x => String(x ?? "")) : [],
-                action: typeof obj.action === "string" ? obj.action : "",
-                nextQuestion: typeof obj.nextQuestion === "string" ? obj.nextQuestion : "",
-                evidenceType: typeof obj.evidenceType === "string" ? obj.evidenceType : "사용자입력",
-                redFlag: typeof obj.redFlag === "string" ? obj.redFlag : "뚜렷한 위험신호 없음",
-                references: Array.isArray(obj.references) ? obj.references.map(x => String(x ?? "")) : []
-            };
-
-            safe.top3 = safe.top3.slice(0, 3);
-            while (safe.top3.length < 3) safe.top3.push("관찰 필요");
-
-            safe.references = safe.references.slice(0, 2).filter(r => r.trim().length > 0);
-
-            return safe;
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if(!text) return;
-
-            appendMessage('user', text);
-            input.value = '';
-
-            try {
-                let response;
-                const endpoints = ['/api/answer', '/api/chat'];
-                for(let url of endpoints) {
-                    try {
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ message: text, history: turns })
-                        });
-                        if(res.ok) {
-                            const json = await res.json();
-                            const normalized = normalizeResponse(json);
-                            if(normalized && normalized.summary) { response = normalized; break; }
-                        }
-                    } catch(e) {}
-                }
-
-                if(response) {
-                    appendMessage('bot', response);
-                    saveToBody(text, response);
-                    turns.push({role: 'user', content: text});
-                    turns.push({role: 'assistant', content: JSON.stringify(response)});
-                }
-            } catch(e) {
-                console.error("Error:", e);
-            }
-        }
-
-        function appendMessage(role, content) {
-            const wrap = document.getElementById('messages');
-            const div = document.createElement('div');
-            div.className = role === 'user' ? 'flex justify-end' : 'flex flex-col items-start w-full';
-
-            if(role === 'user') {
-                div.innerHTML = `<div class="bg-black text-white px-4 py-2 rounded-2xl rounded-tr-none text-sm max-w-[80%]">${escapeHTML(content)}</div>`;
-            } else {
-                const refs = (content.references && content.references.length)
-                    ? content.references.map(r => `<div class="py-2 border-t border-gray-50 line-pre text-gray-500">${escapeHTML(r)}</div>`).join('')
-                    : '';
-
-                div.innerHTML = `
-                    <div class="bg-white border border-gray-100 p-5 rounded-3xl rounded-tl-none w-full shadow-sm space-y-4">
-                        <div class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">${escapeHTML(content.evidenceType)}</div>
-                        <p class="text-[15px] leading-relaxed text-gray-800">${escapeHTML(content.summary)}</p>
-
-                        <div class="flex flex-wrap gap-1">
-                            ${content.top3.map(t => `<span class="bg-gray-50 text-gray-400 px-2 py-0.5 rounded text-[10px]">#${escapeHTML(t)}</span>`).join('')}
-                        </div>
-
-                        <div class="bg-blue-50/50 p-3 rounded-2xl">
-                            <span class="text-[10px] text-blue-400 font-bold block mb-1 uppercase italic">One Action</span>
-                            <p class="text-sm text-blue-700 font-semibold">${escapeHTML(content.action)}</p>
-                        </div>
-
-                        <div class="text-sm font-medium pt-2 italic text-gray-900 border-t border-gray-50">"${escapeHTML(content.nextQuestion)}"</div>
-
-                        ${refs ? `<details class="text-[10px] text-gray-300 mt-2"><summary class="cursor-pointer py-1">References</summary><div class="mt-2">${refs}</div></details>` : ''}
-                    </div>
-                `;
-            }
-            wrap.appendChild(div);
-
-            // near-bottom only auto-scroll (keep your rule)
-            const win = document.getElementById('chat-window');
-            if (win.scrollHeight - win.scrollTop - win.clientHeight < 300) {
-                win.scrollTo({ top: win.scrollHeight, behavior: 'smooth' });
-            }
-        }
-
-        function saveToBody(q, data) {
-            bodyState.history.unshift({ q, ...data, date: new Date().toLocaleDateString() });
-            bodyState.tags = [...new Set([...bodyState.tags, ...data.top3])].slice(0, 15);
-            localStorage.setItem('answer_v2', JSON.stringify(bodyState));
-        }
-
-        function renderBody() {
-            if(bodyState.history.length === 0) return;
-
-            document.getElementById('body-recent').innerText = bodyState.history[0].summary;
-
-            document.getElementById('body-tags').innerHTML = bodyState.tags
-                .map(t => `<span class="px-3 py-1 bg-white border border-gray-100 rounded-full text-xs text-gray-500">#${escapeHTML(t)}</span>`)
-                .join('');
-
-            document.getElementById('body-history').innerHTML = bodyState.history.map(h => `
-                <div class="p-4 bg-white rounded-2xl border border-gray-50">
-                    <div class="text-[9px] text-gray-300 mb-1">${escapeHTML(h.date)} | ${escapeHTML(h.evidenceType)}</div>
-                    <div class="text-xs text-gray-400 mb-2">Q: ${escapeHTML(h.q)}</div>
-                    <div class="text-sm text-gray-800">${escapeHTML(h.summary)}</div>
-                    <div class="mt-2 text-[10px] text-red-400">🚩 ${escapeHTML(h.redFlag)}</div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="px-6 pt-12 pb-10 flex flex-col gap-6" id="chat-flow">
+            ${currentSession.questions.map((q, i) => `
+              <div class="flex justify-end fade-in">
+                <div class="bg-indigo-600 text-white px-5 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md">
+                  ${escapeHTML(q)}
                 </div>
-            `).join('');
+              </div>
+              <div class="flex justify-start fade-in">
+                <div class="glass-card text-slate-700 px-5 py-3 rounded-2xl rounded-tl-none max-w-[85%] text-sm premium-shadow">
+                  ${currentSession.responses[i] || '<span class="loading-dots">분석 중</span>'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Fixed Footer Input for Chat -->
+          <div class="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-6">
+            <div class="relative">
+              <input type="text" id="chat-input"
+                class="w-full bg-white border border-slate-100 rounded-full px-6 py-4 pr-14 shadow-lg outline-none focus:border-indigo-200 text-sm"
+                placeholder="답변을 입력하세요..."
+                onkeypress="handleKeyPress(event)" />
+              <button onclick="handleSend()" class="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500">
+                <i data-lucide="send" class="w-6 h-6"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    function renderBody(container) {
+      const summary = history.length > 0
+        ? (history[0]?.answerSnapshot?.summary ?? "")
+        : "아직 기록된 역사가 없습니다. 첫 질문을 시작해보세요.";
+      const areaStatus = calculateAreaStatus();
+
+      container.innerHTML = `
+        <div class="px-6 pt-10 fade-in">
+          <header class="mb-8">
+            <h2 class="text-2xl font-semibold text-slate-800">My Body History</h2>
+            <p class="text-slate-400 text-xs mt-1">기억은 쌓일수록 더 정교해집니다.</p>
+          </header>
+
+          <!-- Recent Summary -->
+          <section class="mb-8">
+            <div class="glass-card p-6 rounded-3xl premium-shadow border-l-4 border-indigo-500">
+              <h3 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-tighter">Recent Body Summary</h3>
+              <p class="text-slate-700 text-sm leading-relaxed">${safeTextWithLineBreaks(summary)}</p>
+              ${history.length > 0 ? `<button onclick="viewDetail('${history[0].id}')" class="mt-4 text-xs font-semibold text-indigo-500 flex items-center gap-1">전체 리포트 보기 <i data-lucide="chevron-right" class="w-3 h-3"></i></button>` : ''}
+            </div>
+          </section>
+
+          <!-- Areas I'm Watching -->
+          <section class="mb-8">
+            <h3 class="text-sm font-semibold text-slate-800 mb-4">Areas I'm Watching</h3>
+            <div class="grid grid-cols-2 gap-3">
+              ${areaStatus.map(area => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-50 shadow-sm">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-medium text-slate-500">${area.name}</span>
+                    <div class="w-2 h-2 rounded-full ${area.color}"></div>
+                  </div>
+                  <span class="text-sm font-bold text-slate-800">${area.status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+
+          <!-- History Search & List -->
+          <section class="mb-8">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-sm font-semibold text-slate-800 uppercase tracking-widest">ANSWER Remembers</h3>
+              <span class="text-[10px] text-slate-400">${history.length} Memories</span>
+            </div>
+            <div class="relative mb-4">
+              <input type="text" id="history-search" oninput="filterHistory()" placeholder="기억 검색..." class="w-full bg-slate-100 border-none rounded-xl px-4 py-2 text-xs focus:ring-1 focus:ring-indigo-200" />
+              <i data-lucide="search" class="absolute right-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+            </div>
+            <div id="history-list" class="flex flex-col gap-3">
+              ${renderHistoryItems(history)}
+            </div>
+          </section>
+
+          <!-- Record Upload -->
+          <section class="mb-10 p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-center">
+            <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+            <h4 class="text-sm font-semibold text-slate-600">건강 기록 업로드</h4>
+            <p class="text-[11px] text-slate-400 mt-1 mb-4">검진 결과 사진이나 PDF를 올려주시면<br>기억의 깊이가 더 깊어집니다. (선택사항)</p>
+            <button class="btn btn-sm btn-outline border-slate-300 text-slate-500 hover:bg-slate-200 hover:border-slate-200 rounded-full px-6">파일 선택</button>
+          </section>
+
+          <p class="text-center text-[10px] text-slate-300 mb-10">ANSWER v0.0.9 | JSON memory enabled.</p>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function renderHistoryItems(items) {
+      if (!items || items.length === 0) return `<p class="text-center py-10 text-slate-300 text-xs">기록된 질문이 없습니다.</p>`;
+      return items.map(item => `
+        <div onclick="viewDetail('${item.id}')" class="bg-white p-4 rounded-2xl border border-slate-50 shadow-sm flex justify-between items-center active:scale-[0.98] transition-transform">
+          <div class="flex-1">
+            <div class="flex gap-1 mb-1">
+              ${((item?.answerSnapshot?.top3) || []).map(tag => `<span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${escapeHTML(tag)}</span>`).join('')}
+            </div>
+            <p class="text-sm text-slate-700 font-medium truncate pr-4">${escapeHTML(item.userQuestion)}</p>
+            <span class="text-[10px] text-slate-400">${new Date(item.createdAt).toLocaleDateString()}</span>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+        </div>
+      `).join('');
+    }
+
+    // --- Interaction Handlers ---
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') handleSend();
+    }
+
+    async function handleSend() {
+      const inputId = currentSession ? 'chat-input' : 'main-input';
+      const input = document.getElementById(inputId);
+      if (!input) return;
+
+      const text = input.value.trim();
+      if (!text || isTyping) return;
+
+      if (!currentSession) {
+        currentSession = { id: Date.now().toString(), questions: [text], responses: [], step: 0, turns: [] };
+      } else {
+        currentSession.questions.push(text);
+        currentSession.step++;
+      }
+
+      input.value = '';
+      renderContent();
+
+      isTyping = true;
+      await simulateAIResponse();
+      isTyping = false;
+
+      renderContent();
+      lucide.createIcons();
+    }
+
+    // =========================
+    // Real API helper (JSON)
+    // =========================
+    async function fetchAnswerFromAPI({ userText, session }) {
+      const turns = Array.isArray(session?.turns) ? session.turns : [];
+      const payloadAnswer = {
+        mode: "counsel",
+        text: userText,
+        turns,     // [{q, aJson}]
+        myBody: {} // 추후 확장
+      };
+
+      // 레거시 /api/chat 호환 payload (혹시 남아있을 때만)
+      const payloadChat = {
+        input: userText,
+        message: userText,
+        messages: buildMessagesLegacy(session),
+        sessionId: session?.id,
+        step: session?.step ?? 0,
+        questions: session?.questions ?? [],
+      };
+
+      let lastErr = null;
+
+      for (const endpoint of API_ENDPOINTS) {
+        try {
+          const isAnswer = endpoint.includes("/api/answer");
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(isAnswer ? payloadAnswer : payloadChat),
+          });
+
+          if (!res.ok) {
+            let err = "";
+            try { err = (await res.json())?.error || ""; } catch (_) {}
+            if (!err) try { err = await res.text(); } catch (_) {}
+            throw new Error(err || `API error: ${res.status}`);
+          }
+
+          const data = await res.json();
+
+          if (data && typeof data.answer === "object" && data.answer) {
+            return { kind: "answer_json", answer: data.answer };
+          }
+
+          const text = extractAssistantTextLegacy(data);
+          return { kind: "text", text };
+
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      throw lastErr || new Error("No available API endpoint.");
+    }
+
+    // 레거시 /api/chat 대응용
+    function buildMessagesLegacy(session) {
+      const msgs = [
+        { role: "system", content: "You are ANSWER, a health partner. Do not diagnose. Ask follow-ups and provide practical guidance." }
+      ];
+
+      const qs = session?.questions || [];
+      const rs = session?.responses || [];
+
+      for (let i = 0; i < qs.length; i++) {
+        msgs.push({ role: "user", content: String(qs[i] ?? "") });
+        if (rs[i]) msgs.push({ role: "assistant", content: stripHTML(String(rs[i])) });
+      }
+      return msgs;
+    }
+
+    function extractAssistantTextLegacy(data) {
+      if (typeof data?.text === "string") return data.text;
+      if (typeof data?.output_text === "string") return data.output_text;
+      if (typeof data?.answer === "string") return data.answer;
+      if (typeof data?.result === "string") return data.result;
+      if (typeof data?.message?.content === "string") return data.message.content;
+      if (typeof data === "string") return data;
+      return JSON.stringify(data);
+    }
+
+    function stripHTML(html) {
+      if (!html) return "";
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html;
+      return (tmp.textContent || tmp.innerText || "").trim();
+    }
+
+    // =========================
+    // XSS-safe helpers
+    // =========================
+    function escapeHTML(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function safeTextWithLineBreaks(str) {
+      return escapeHTML(str).replace(/\n/g, "<br>");
+    }
+
+    // =========================
+    // Answer Cards Renderer (JSON)
+    // =========================
+    function renderAnswerCards(answer) {
+      const summary = answer?.summary || "정보가 부족해 우선 핵심만 정리할게.";
+      const top3 = Array.isArray(answer?.top3) ? answer.top3 : ["정보부족", "정보부족", "정보부족"];
+      const action = answer?.action || "지금 상태를 한 문장으로 적어줘.";
+      const nextQ = answer?.nextQuestion || "가장 불편한 증상/목표가 뭐야?";
+      const evidence = answer?.evidenceType || "사용자입력";
+      const redFlag = answer?.redFlag || "뚜렷한 위험신호 없음";
+
+      return `
+        <div class="flex flex-col gap-3">
+          <div class="bg-white rounded-2xl p-4 premium-shadow border border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-1">요약</div>
+            <div class="text-sm text-slate-800 leading-relaxed">${escapeHTML(summary)}</div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-4 premium-shadow border border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-2">가능성 TOP3</div>
+            <div class="flex flex-wrap gap-2">
+              ${top3.slice(0,3).map(x => `
+                <span class="text-[11px] px-3 py-1 rounded-full bg-slate-100 text-slate-700">${escapeHTML(x || "정보부족")}</span>
+              `).join("")}
+            </div>
+          </div>
+
+          <div class="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
+            <div class="text-[11px] font-semibold text-indigo-600 mb-1">지금 할 1가지</div>
+            <div class="text-sm text-slate-800">${escapeHTML(action)}</div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-4 premium-shadow border border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-1">다음 질문</div>
+            <div class="text-sm text-slate-800">${escapeHTML(nextQ)}</div>
+          </div>
+
+          <div class="flex gap-2">
+            <div class="flex-1 bg-white rounded-2xl p-3 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 mb-1">근거 타입</div>
+              <div class="text-[12px] text-slate-700">${escapeHTML(evidence)}</div>
+            </div>
+            <div class="flex-1 bg-white rounded-2xl p-3 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 mb-1">위험신호</div>
+              <div class="text-[12px] text-slate-700">${escapeHTML(redFlag)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================
+    // Chat flow: API -> cards -> history
+    // =========================
+    async function simulateAIResponse() {
+      const step = currentSession.step;
+      const latestUserText = currentSession.questions[currentSession.questions.length - 1];
+
+      let result;
+      try {
+        result = await fetchAnswerFromAPI({ userText: latestUserText, session: currentSession });
+      } catch (e) {
+        console.error(e);
+        currentSession.responses.push(`
+          <div class="text-sm text-slate-600">서버 연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.</div>
+        `);
+        return;
+      }
+
+      if (result.kind === "answer_json") {
+        const answer = result.answer;
+
+        // turns 1:1 저장 (누적 버그 근본 해결)
+        currentSession.turns.push({ q: latestUserText, aJson: answer });
+
+        // 카드형 렌더
+        currentSession.responses.push(renderAnswerCards(answer));
+
+        // 평균 2회 문진(최대 3회) 기준: step>=1부터 저장 시작
+        // step: 0(첫 질문), 1(두 번째 질문), 2(세 번째 질문)
+        if (step >= 1) {
+          const historyItem = {
+            id: currentSession.id,
+            createdAt: new Date().toISOString(),
+            userQuestion: currentSession.questions[0] ?? "",
+            answerSnapshot: answer,
+            turns: currentSession.turns.slice(0, 3)
+          };
+          history.unshift(historyItem);
+          localStorage.setItem('answer_history_v1', JSON.stringify(history));
         }
 
-        // initial render if any (optional)
-        // renderBody();
-    </script>
+        return;
+      }
+
+      // 레거시 텍스트 수습
+      const responseText = (result.text || "").trim() || "정보가 부족해요. 한 문장으로 다시 말해줄래?";
+      const fallback = {
+        summary: responseText,
+        top3: ["정보부족", "정보부족", "정보부족"],
+        action: "지금 상태를 한 문장으로 적어줘.",
+        nextQuestion: "가장 불편한 증상/목표가 뭐야?",
+        evidenceType: "사용자입력",
+        redFlag: "뚜렷한 위험신호 없음"
+      };
+      currentSession.turns.push({ q: latestUserText, aJson: fallback });
+      currentSession.responses.push(`<div class="text-sm text-slate-700">${safeTextWithLineBreaks(responseText)}</div>`);
+    }
+
+    // =========================
+    // History modal / controls
+    // =========================
+    function viewDetail(id) {
+      const item = history.find(h => h.id === id);
+      if (!item) return;
+
+      const modal = document.getElementById('report_modal');
+      const content = document.getElementById('modal-content');
+
+      const a = item.answerSnapshot || {};
+
+      content.innerHTML = `
+        <div class="mb-6">
+          <span class="text-[10px] font-bold text-slate-400">${new Date(item.createdAt).toLocaleString()}</span>
+          <h3 class="text-xl font-bold text-slate-800 mt-1">${escapeHTML(item.userQuestion)}</h3>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 premium-shadow border border-slate-100">
+          ${renderAnswerCards(a)}
+
+          <div class="mt-4 pt-4 border-t border-slate-100">
+            <div class="text-[11px] font-semibold text-slate-400 mb-2">문진 기록 (최대 3회)</div>
+            ${(item.turns || []).map(t => `
+              <div class="mb-3">
+                <div class="text-[11px] text-slate-500">Q: ${escapeHTML(t.q || "")}</div>
+                <div class="text-[11px] text-slate-700">A: ${escapeHTML((t.aJson && t.aJson.summary) ? t.aJson.summary : "")}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <button onclick="deleteHistory('${item.id}')" class="text-xs text-red-400 underline">이 기억 삭제하기</button>
+        </div>
+      `;
+
+      modal.showModal();
+      lucide.createIcons();
+    }
+
+    function deleteHistory(id) {
+      history = history.filter(h => h.id !== id);
+      localStorage.setItem('answer_history_v1', JSON.stringify(history));
+      document.getElementById('report_modal').close();
+      if (currentTab === 'body') renderContent();
+    }
+
+    function filterHistory() {
+      const el = document.getElementById('history-search');
+      const query = (el?.value || "").toLowerCase();
+
+      const filtered = history.filter(h =>
+        (h.userQuestion || "").toLowerCase().includes(query) ||
+        ((h?.answerSnapshot?.top3 || []).some(s => String(s).toLowerCase().includes(query)))
+      );
+
+      const list = document.getElementById('history-list');
+      if (list) list.innerHTML = renderHistoryItems(filtered);
+      lucide.createIcons();
+    }
+
+    function calculateAreaStatus() {
+      const areas = [
+        { name: "수면 리듬", keywords: ["잠", "수면", "피곤", "피로"], status: "안정적", color: "bg-emerald-400", count: 0 },
+        { name: "소화 반응", keywords: ["소화", "위", "배", "더부룩", "가스"], status: "안정적", color: "bg-emerald-400", count: 0 },
+        { name: "에너지 대사", keywords: ["기운", "활력", "피로", "무기력"], status: "안정적", color: "bg-emerald-400", count: 0 },
+        { name: "스트레스/심리", keywords: ["긴장", "불안", "두근", "스트레스"], status: "안정적", color: "bg-emerald-400", count: 0 }
+      ];
+
+      history.forEach(h => {
+        areas.forEach(a => {
+          if (a.keywords.some(k => (h.userQuestion || "").includes(k))) a.count++;
+        });
+      });
+
+      areas.forEach(a => {
+        if (a.count >= 3) { a.status = "주의"; a.color = "bg-amber-400"; }
+        else if (a.count >= 1) { a.status = "관찰중"; a.color = "bg-sky-400"; }
+      });
+
+      return areas;
+    }
+
+    // --- Start App ---
+    window.onload = init;
+  </script>
 </body>
 </html>
+```
