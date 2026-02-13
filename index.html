@@ -98,10 +98,10 @@
     let currentSession = null; // { id, questions: [], responses: [], step: 0, turns: [] }
     let isTyping = false;
 
-    // PATCH-1: placeholder timer 중복 실행 방지용
+    // placeholder timer 중복 실행 방지용
     let placeholderTimer = null;
 
-    // PATCH-API: /api/answer / /api/chat 모두 대응(백엔드 경로 불일치 방지)
+    // /api/answer / /api/chat 모두 대응
     const API_ENDPOINTS = ["/api/answer", "/api/chat"];
 
     const placeholders = [
@@ -127,7 +127,6 @@
       lucide.createIcons();
     }
 
-    // PATCH-NAV: replace 대신 add/remove로 확정 (꼬임 방지)
     function updateNav() {
       const homeBtn = document.getElementById('nav-home');
       const bodyBtn = document.getElementById('nav-body');
@@ -148,7 +147,6 @@
       }
     }
 
-    // PATCH-1: 중복 실행 방지 + 홈/세션 상태에서만 placeholder 변경
     function startPlaceholderRotation() {
       if (placeholderTimer) return;
 
@@ -162,7 +160,6 @@
     }
 
     // --- Rendering ---
-    // PATCH-3: 사용자가 이미 아래쪽에 있을 때만 자동 스크롤
     function renderContent() {
       const container = document.getElementById('app-content');
       if (!container) return;
@@ -212,7 +209,6 @@
             `).join('')}
           </div>
 
-          <!-- Fixed Footer Input for Chat -->
           <div class="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-6">
             <div class="relative">
               <input type="text" id="chat-input"
@@ -242,7 +238,6 @@
             <p class="text-slate-400 text-xs mt-1">기억은 쌓일수록 더 정교해집니다.</p>
           </header>
 
-          <!-- Recent Summary -->
           <section class="mb-8">
             <div class="glass-card p-6 rounded-3xl premium-shadow border-l-4 border-indigo-500">
               <h3 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-tighter">Recent Body Summary</h3>
@@ -251,7 +246,6 @@
             </div>
           </section>
 
-          <!-- Areas I'm Watching -->
           <section class="mb-8">
             <h3 class="text-sm font-semibold text-slate-800 mb-4">Areas I'm Watching</h3>
             <div class="grid grid-cols-2 gap-3">
@@ -267,7 +261,6 @@
             </div>
           </section>
 
-          <!-- History Search & List -->
           <section class="mb-8">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-sm font-semibold text-slate-800 uppercase tracking-widest">ANSWER Remembers</h3>
@@ -282,7 +275,6 @@
             </div>
           </section>
 
-          <!-- Record Upload -->
           <section class="mb-10 p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-center">
             <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
             <h4 class="text-sm font-semibold text-slate-600">건강 기록 업로드</h4>
@@ -355,7 +347,6 @@
         myBody: {} // 추후 확장
       };
 
-      // 레거시 /api/chat 호환 payload (혹시 남아있을 때만)
       const payloadChat = {
         input: userText,
         message: userText,
@@ -385,10 +376,22 @@
 
           const data = await res.json();
 
+          // ✅ FIX-JSON: (1) {answer:{...}} 형태
           if (data && typeof data.answer === "object" && data.answer) {
             return { kind: "answer_json", answer: data.answer };
           }
 
+          // ✅ FIX-JSON: (2) 백엔드가 top-level로 {summary, top3, action...} 내려주는 형태도 잡기
+          if (data && typeof data === "object" && looksLikeAnswerShape(data)) {
+            return { kind: "answer_json", answer: data };
+          }
+
+          // ✅ FIX-JSON: (3) 혹시 {data:{summary...}} 같은 래핑도 대비
+          if (data && typeof data === "object" && data.data && looksLikeAnswerShape(data.data)) {
+            return { kind: "answer_json", answer: data.data };
+          }
+
+          // 레거시 텍스트
           const text = extractAssistantTextLegacy(data);
           return { kind: "text", text };
 
@@ -400,7 +403,15 @@
       throw lastErr || new Error("No available API endpoint.");
     }
 
-    // 레거시 /api/chat 대응용
+    function looksLikeAnswerShape(obj) {
+      if (!obj || typeof obj !== "object") return false;
+      // 필수 키 3개만으로도 판단(백엔드가 일부를 비울 수 있어서 엄격하게 X)
+      const hasSummary = typeof obj.summary === "string";
+      const hasTop3 = Array.isArray(obj.top3);
+      const hasAction = typeof obj.action === "string";
+      return hasSummary && hasTop3 && hasAction;
+    }
+
     function buildMessagesLegacy(session) {
       const msgs = [
         { role: "system", content: "You are ANSWER, a health partner. Do not diagnose. Ask follow-ups and provide practical guidance." }
@@ -458,7 +469,7 @@
       const action = answer?.action || "지금 상태를 한 문장으로 적어줘.";
       const nextQ = answer?.nextQuestion || "가장 불편한 증상/목표가 뭐야?";
       const evidence = answer?.evidenceType || "사용자입력";
-      const redFlag = answer?.redFlag || "뚜렷한 위험신호 없음";
+      const redFlag = (answer?.redFlag ?? "뚜렷한 위험신호 없음");
 
       return `
         <div class="flex flex-col gap-3">
@@ -521,14 +532,9 @@
       if (result.kind === "answer_json") {
         const answer = result.answer;
 
-        // turns 1:1 저장 (누적 버그 근본 해결)
         currentSession.turns.push({ q: latestUserText, aJson: answer });
-
-        // 카드형 렌더
         currentSession.responses.push(renderAnswerCards(answer));
 
-        // 평균 2회 문진(최대 3회) 기준: step>=1부터 저장 시작
-        // step: 0(첫 질문), 1(두 번째 질문), 2(세 번째 질문)
         if (step >= 1) {
           const historyItem = {
             id: currentSession.id,
@@ -540,21 +546,24 @@
           history.unshift(historyItem);
           localStorage.setItem('answer_history_v1', JSON.stringify(history));
         }
-
         return;
       }
 
-      // 레거시 텍스트 수습
-      const responseText = (result.text || "").trim() || "정보가 부족해요. 한 문장으로 다시 말해줄래?";
-      const fallback = {
-        summary: responseText,
-        top3: ["정보부족", "정보부족", "정보부족"],
-        action: "지금 상태를 한 문장으로 적어줘.",
-        nextQuestion: "가장 불편한 증상/목표가 뭐야?",
-        evidenceType: "사용자입력",
-        redFlag: "뚜렷한 위험신호 없음"
-      };
-      currentSession.turns.push({ q: latestUserText, aJson: fallback });
+      // 레거시 텍스트 수습 (JSON 문자열처럼 보이면 여기서도 한번 더 파싱 시도)
+      const raw = (result.text || "").trim();
+      if (raw && raw.startsWith("{") && raw.endsWith("}")) {
+        try {
+          const maybe = JSON.parse(raw);
+          if (looksLikeAnswerShape(maybe)) {
+            currentSession.turns.push({ q: latestUserText, aJson: maybe });
+            currentSession.responses.push(renderAnswerCards(maybe));
+            return;
+          }
+        } catch (_) {}
+      }
+
+      const responseText = raw || "정보가 부족해요. 한 문장으로 다시 말해줄래?";
+      currentSession.turns.push({ q: latestUserText, aJson: { summary: responseText } });
       currentSession.responses.push(`<div class="text-sm text-slate-700">${safeTextWithLineBreaks(responseText)}</div>`);
     }
 
@@ -647,4 +656,3 @@
   </script>
 </body>
 </html>
-```
